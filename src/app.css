@@ -1,0 +1,183 @@
+:root {
+	--app-max-width: 960px;
+}
+
+html {
+	color-scheme: light dark;
+}
+
+body {
+	margin: 0;
+	font-family: Roboto, system-ui, sans-serif;
+	background-color: var(--app-background, #fff);
+	color: var(--app-on-background, #1a1a1a);
+}
+
+.app-shell {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--app-background, #fff);
+	color: var(--app-on-background, #1a1a1a);
+}
+
+.auth-page {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding: 3rem 1rem;
+	box-sizing: border-box;
+	background-color: var(--app-background, #fff);
+	color: var(--app-on-background, #1a1a1a);
+}
+
+.auth-card {
+	width: 100%;
+	max-width: 420px;
+}
+
+.app-content {
+	flex: 1;
+	max-width: var(--app-max-width);
+	width: 100%;
+	margin: 0 auto;
+	padding: 1.5rem 1rem 3rem;
+	box-sizing: border-box;
+}
+
+.page-title {
+	margin: 0 0 1rem;
+	font-size: 1.75rem;
+	font-weight: 500;
+	color: var(--app-on-background, inherit);
+}
+
+.section-title {
+	margin: 0 0 1rem;
+	font-size: 1.125rem;
+	font-weight: 500;
+	color: var(--app-on-background, inherit);
+}
+
+.section-title--on-surface {
+	color: var(--app-on-surface, inherit);
+}
+
+.card-heading {
+	margin: 0;
+	font-size: 1.125rem;
+	font-weight: 500;
+	color: var(--app-on-surface, inherit);
+}
+
+.muted {
+	color: var(--app-muted, rgba(0, 0, 0, 0.6));
+	font-size: 0.875rem;
+}
+
+.card-grid {
+	display: grid;
+	gap: 1rem;
+}
+
+.form-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	width: 100%;
+	max-width: 420px;
+}
+
+.row-actions {
+	display: flex;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-top: 1rem;
+}
+
+.set-row {
+	display: grid;
+	grid-template-columns: 3rem 1fr 1fr 1fr auto;
+	gap: 0.5rem;
+	align-items: center;
+	margin-bottom: 0.5rem;
+}
+
+.entry-card {
+	margin-bottom: 1.5rem;
+}
+
+.error-text {
+	color: var(--app-error, #b00020);
+	font-size: 0.875rem;
+}
+
+/* Native inputs used alongside SMUI (set rows, etc.) */
+.native-input,
+.set-row input,
+.set-row select {
+	background-color: var(--app-input-bg, #fff);
+	color: var(--app-on-surface, inherit);
+	border: 1px solid var(--app-border, rgba(0, 0, 0, 0.12));
+	border-radius: 4px;
+	padding: 0.5rem;
+	font: inherit;
+	box-sizing: border-box;
+}
+
+.native-input:focus,
+.set-row input:focus,
+.set-row select:focus {
+	outline: 2px solid var(--mdc-theme-primary, #ff3e00);
+	outline-offset: 1px;
+}
+
+.user-label {
+	margin-right: 0.75rem;
+	font-size: 0.875rem;
+	color: inherit;
+}
+
+.material-icons {
+	font-family: 'Material Icons';
+	font-weight: normal;
+	font-style: normal;
+	font-size: 24px;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	display: inline-block;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	font-feature-settings: 'liga';
+	-webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 600px) {
+	.app-content {
+		padding: 1rem 0.75rem 2.5rem;
+	}
+
+	.page-title {
+		font-size: 1.5rem;
+	}
+
+	.form-stack {
+		max-width: none;
+	}
+
+	.row-actions {
+		gap: 0.5rem;
+	}
+
+	.row-actions .mdc-button {
+		min-height: 42px;
+	}
+
+	.set-row {
+		grid-template-columns: 1fr 1fr;
+	}
+}

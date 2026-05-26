@@ -1,0 +1,36 @@
+@use 'sass:color';
+
+@use '@smui/common/theme/color-palette';
+
+// Svelte Colors!
+@use '@smui/common/theme/index' as theme with (
+  $primary: #ff3e00,
+  $secondary: #676778,
+  $surface: #fff,
+  $background: #fff,
+  $error: color-palette.$red-900
+);
+
+:root {
+  --app-background: #{theme.$background};
+  --app-on-background: rgba(0, 0, 0, 0.87);
+  --app-surface: #{theme.$surface};
+  --app-on-surface: #{theme.$on-surface};
+  --app-muted: rgba(0, 0, 0, 0.6);
+  --app-error: #{theme.$error};
+  --app-border: rgba(0, 0, 0, 0.12);
+  --app-input-bg: #{theme.$surface};
+}
+
+html,
+body {
+  background-color: var(--app-background);
+  color: var(--app-on-background);
+}
+
+a {
+  color: #40b3ff;
+}
+a:visited {
+  color: color.scale(#40b3ff, $lightness: -35%);
+}

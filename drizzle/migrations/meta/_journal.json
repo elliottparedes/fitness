@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1779736901187,
+      "tag": "0000_married_winter_soldier",
+      "breakpoints": true
+    }
+  ]
+}
