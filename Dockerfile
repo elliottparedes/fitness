@@ -3,10 +3,10 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm install --no-audit --no-fund
+RUN npm install --ignore-scripts --no-audit --no-fund
 
 COPY . .
-RUN npm run build && npm prune --omit=dev
+RUN npm run prepare && npm run build && npm prune --omit=dev
 
 FROM node:20-alpine AS runtime
 
