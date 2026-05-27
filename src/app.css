@@ -35,6 +35,35 @@ body {
 .auth-card {
 	width: 100%;
 	max-width: 420px;
+	border-radius: 16px;
+	overflow: hidden;
+	box-shadow:
+		0 14px 34px rgba(0, 0, 0, 0.28),
+		0 3px 10px rgba(0, 0, 0, 0.2);
+	background: linear-gradient(
+		160deg,
+		color-mix(in srgb, var(--app-surface, #1f2027) 94%, white 6%),
+		var(--app-surface, #1f2027)
+	);
+}
+
+.auth-card-content {
+	padding: 1.5rem;
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.auth-title {
+	margin-bottom: 0.5rem;
+}
+
+.auth-form {
+	width: 100%;
+	max-width: none;
+}
+
+.auth-submit {
+	width: 100%;
 }
 
 .app-content {
@@ -167,6 +196,10 @@ body {
 
 	.form-stack {
 		max-width: none;
+	}
+
+	.auth-card {
+		max-width: 100%;
 	}
 
 	.row-actions {

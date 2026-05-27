@@ -40,6 +40,15 @@ SvelteKit app for logging gym workouts — machines, cardio, and free weights. U
 
 Register an account, then log workouts from the dashboard.
 
+## Docker / production
+
+The image is built without `.env` (see `.dockerignore`). At **runtime**, the container must receive at least:
+
+- `DATABASE_URL` (or `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`)
+- `AUTH_SECRET` (same value across deploys; generate with `openssl rand -base64 32`)
+
+Apply schema to the production database (`npm run db:push` or `db:migrate` against that DB). Accounts are per-database — register on production if the DB is empty or different from local.
+
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for layer boundaries, conventions, and how to extend the app without coupling routes to the database.

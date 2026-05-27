@@ -1,7 +1,7 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import Credentials from '@auth/core/providers/credentials';
 import { compare } from 'bcryptjs';
-import { AUTH_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { userRepository } from '$lib/server/repositories/user-repository';
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -44,7 +44,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			return session;
 		}
 	},
-	secret: AUTH_SECRET,
+	secret: env.AUTH_SECRET,
 	trustHost: true,
 	pages: {
 		signIn: '/login'

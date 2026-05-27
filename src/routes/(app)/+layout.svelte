@@ -75,7 +75,7 @@
 					<Text>Preferences</Text>
 				</Item>
 			</List>
-			<form method="POST" action="/logout?/default" style="padding: 1rem">
+			<form method="POST" action="/logout" style="padding: 1rem">
 				<button type="submit" class="mdc-button mdc-button--raised">Sign out</button>
 			</form>
 		</DrawerContent>
