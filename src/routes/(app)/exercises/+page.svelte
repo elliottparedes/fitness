@@ -1,9 +1,5 @@
 <script lang="ts">
-	import Button, { Label } from '@smui/button';
-	import { Icon } from '@smui/icon-button';
-	import DataTable, { Head, Body, Row, Cell } from '@smui/data-table';
 	import Textfield from '@smui/textfield';
-	import Select, { Option } from '@smui/select';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { toast } from '$lib/ui/toast.svelte';
@@ -25,16 +21,16 @@
 
 	const hasCustomExercises = $derived(data.myExercises.length > 0);
 
+	const tabs: { value: ExerciseCategory | null; label: string; shortLabel: string }[] = [
+		{ value: null, label: 'All', shortLabel: 'All' },
+		{ value: 'free_weight', label: CATEGORY_LABELS.free_weight, shortLabel: 'Weights' },
+		{ value: 'machine', label: CATEGORY_LABELS.machine, shortLabel: 'Machine' },
+		{ value: 'cardio', label: CATEGORY_LABELS.cardio, shortLabel: 'Cardio' }
+	];
+
 	function isCustomExercise(exercise: (typeof data.exercises)[0]) {
 		return exercise.createdByUserId != null;
 	}
-
-	const tabs: { value: ExerciseCategory | null; label: string }[] = [
-		{ value: null, label: 'All' },
-		{ value: 'free_weight', label: CATEGORY_LABELS.free_weight },
-		{ value: 'machine', label: CATEGORY_LABELS.machine },
-		{ value: 'cardio', label: CATEGORY_LABELS.cardio }
-	];
 
 	function handleDelete(exercise: (typeof data.exercises)[0]) {
 		exerciseToDelete = { id: exercise.id, name: exercise.name };
@@ -69,98 +65,111 @@
 	});
 </script>
 
-<h1 class="page-title">Exercises</h1>
-<p class="muted">Built-in catalog plus your custom exercises.</p>
+<div class="exercises-page">
+	<header class="exercises-page__header">
+		<h1 class="page-title">Exercises</h1>
+		<p class="muted exercises-page__lead">Built-in catalog plus your custom exercises.</p>
+	</header>
 
-<div class="row-actions exercise-tabs">
-	{#each tabs as t}
-		<Button
-			variant={data.category === t.value || (!data.category && !t.value) ? 'raised' : undefined}
-			href={t.value ? `/exercises?category=${t.value}` : '/exercises'}
-		>
-			<Label>{t.label}</Label>
-		</Button>
-	{/each}
-	<Button variant="raised" onclick={() => (dialogOpen = true)}>
-		<Label>Add custom</Label>
-	</Button>
-</div>
+	<nav class="category-filter" aria-label="Filter by category">
+		{#each tabs as t}
+			{@const active = data.category === t.value || (!data.category && !t.value)}
+			<a
+				href={t.value ? `/exercises?category=${t.value}` : '/exercises'}
+				class="category-filter__tab"
+				class:category-filter__tab--active={active}
+				aria-current={active ? 'page' : undefined}
+			>
+				<span class="category-filter__short">{t.shortLabel}</span>
+				<span class="category-filter__full">{t.label}</span>
+			</a>
+		{/each}
+	</nav>
 
-<div class="table-scroll">
-	<DataTable style="width: 100%; margin-top: 1rem; min-width: 700px">
-		<Head>
-			<Row>
-				<Cell>Name</Cell>
-				<Cell>Category</Cell>
-				<Cell>Muscle Group</Cell>
-				<Cell>Source</Cell>
-				{#if hasCustomExercises}
-					<Cell numeric>Actions</Cell>
-				{/if}
-			</Row>
-		</Head>
-		<Body>
+	<div class="exercises-page__toolbar">
+		<p class="muted exercises-page__count">
+			{data.exercises.length} exercise{data.exercises.length === 1 ? '' : 's'}
+		</p>
+		<button type="button" class="btn btn--primary exercises-page__add" onclick={() => (dialogOpen = true)}>
+			<span class="material-icons" aria-hidden="true">add</span>
+			Add custom
+		</button>
+	</div>
+
+	{#if data.exercises.length === 0}
+		<div class="empty-state">
+			<span class="material-icons empty-state__icon" aria-hidden="true">fitness_center</span>
+			<p>No exercises in this category</p>
+			<p class="muted">Try another filter or add your own exercise.</p>
+		</div>
+	{:else}
+		<ul class="exercise-catalog-list">
 			{#each data.exercises as exercise (exercise.id)}
-				<Row>
-					<Cell>{exercise.name}</Cell>
-					<Cell>{CATEGORY_LABELS[exercise.category]}</Cell>
-					<Cell>{exercise.muscleGroup ?? '—'}</Cell>
-					<Cell>{isCustomExercise(exercise) ? 'Yours' : 'Catalog'}</Cell>
-					{#if hasCustomExercises}
-						<Cell numeric>
-							{#if isCustomExercise(exercise)}
-								<Button
-									type="button"
-									color="secondary"
-									class="delete-btn"
-									onclick={() => handleDelete(exercise)}
-								>
-									<Icon class="material-icons">delete</Icon>
-									<Label>Delete</Label>
-								</Button>
-							{:else}
-								<span class="muted">—</span>
-							{/if}
-						</Cell>
-					{/if}
-				</Row>
+				<li>
+					<article class="exercise-catalog-card">
+						<div class="exercise-catalog-card__main">
+							<h2 class="exercise-catalog-card__name">{exercise.name}</h2>
+							<p class="exercise-catalog-card__meta muted">
+								<span>{CATEGORY_LABELS[exercise.category]}</span>
+								{#if exercise.muscleGroup}
+									<span class="exercise-catalog-card__dot" aria-hidden="true">·</span>
+									<span>{exercise.muscleGroup}</span>
+								{/if}
+							</p>
+							<span
+								class="exercise-catalog-card__badge"
+								class:exercise-catalog-card__badge--yours={isCustomExercise(exercise)}
+							>
+								{isCustomExercise(exercise) ? 'Yours' : 'Catalog'}
+							</span>
+						</div>
+						{#if isCustomExercise(exercise)}
+							<button
+								type="button"
+								class="icon-btn icon-btn--danger"
+								aria-label="Delete {exercise.name}"
+								onclick={() => handleDelete(exercise)}
+							>
+								<span class="material-icons" aria-hidden="true">delete_outline</span>
+							</button>
+						{/if}
+					</article>
+				</li>
 			{/each}
-		</Body>
-	</DataTable>
-</div>
+		</ul>
+	{/if}
 
-{#if !hasCustomExercises}
-	<p class="muted" style="margin-top: 1rem">
-		Only catalog exercises are listed. Use <strong>Add custom</strong> to create one you can edit or delete.
-	</p>
-{/if}
+	{#if !hasCustomExercises}
+		<p class="muted exercises-page__hint">
+			Only catalog exercises are listed. Tap <strong>Add custom</strong> to create one you can delete later.
+		</p>
+	{/if}
+</div>
 
 <AppDialog bind:open={dialogOpen} title="Add custom exercise" titleId="add-exercise-title">
 	{#if form?.message}
 		<p class="error-text">{form.message}</p>
 	{/if}
-	<form method="POST" action="?/create" class="form-stack">
+	<form method="POST" action="?/create" class="form-stack form-stack--wide">
 		<HiddenField name="name" value={name} />
-		<HiddenField name="category" value={category} />
 		<HiddenField name="muscleGroup" value={muscleGroup} />
 		<HiddenField name="description" value={description} />
 		<Textfield bind:value={name} label="Name" required style="width: 100%" />
-		<Select bind:value={category} label="Category" style="width: 100%">
-			<Option value="free_weight">{CATEGORY_LABELS.free_weight}</Option>
-			<Option value="machine">{CATEGORY_LABELS.machine}</Option>
-			<Option value="cardio">{CATEGORY_LABELS.cardio}</Option>
-		</Select>
+		<label class="form-field">
+			<span class="form-field__label">Category</span>
+			<select class="native-input" name="category" bind:value={category}>
+				<option value="free_weight">{CATEGORY_LABELS.free_weight}</option>
+				<option value="machine">{CATEGORY_LABELS.machine}</option>
+				<option value="cardio">{CATEGORY_LABELS.cardio}</option>
+			</select>
+		</label>
 		{#if category !== 'cardio'}
 			<Textfield bind:value={muscleGroup} label="Muscle group" style="width: 100%" />
 		{/if}
 		<Textfield bind:value={description} label="Description" textarea input$rows={2} style="width: 100%" />
 		<div class="dialog-actions">
-			<Button type="button" onclick={() => (dialogOpen = false)}>
-				<Label>Cancel</Label>
-			</Button>
-			<Button variant="raised" type="submit">
-				<Label>Save</Label>
-			</Button>
+			<button type="button" class="btn btn--text" onclick={() => (dialogOpen = false)}>Cancel</button>
+			<button type="submit" class="btn btn--primary">Save</button>
 		</div>
 	</form>
 </AppDialog>
@@ -177,45 +186,65 @@
 />
 
 <style>
-	.error-text {
-		color: var(--app-error, #d32f2f);
-		margin-bottom: 0.5rem;
-	}
-	.form-stack {
+	.exercises-page {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-		max-width: none;
+		padding-bottom: 1rem;
 	}
+
+	.exercises-page__header .page-title {
+		margin-bottom: 0.35rem;
+	}
+
+	.exercises-page__lead {
+		margin: 0;
+	}
+
+	.exercises-page__toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.exercises-page__count {
+		margin: 0;
+		font-size: 0.875rem;
+	}
+
+	.exercises-page__add {
+		margin-left: auto;
+	}
+
+	.exercises-page__add .material-icons {
+		font-size: 1.25rem;
+	}
+
+	.exercises-page__hint {
+		margin: 0;
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+
 	.dialog-actions {
 		display: flex;
 		gap: 0.5rem;
-		margin-top: 1rem;
+		margin-top: 0.25rem;
 		flex-wrap: wrap;
-	}
-	:global(.delete-btn) {
-		--mdc-icon-size: 18px;
-	}
-	:global(.delete-btn .material-icons) {
-		font-size: 18px;
-		margin-right: 0.25rem;
+		justify-content: flex-end;
 	}
 
-	.table-scroll {
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-	}
-
-	@media (max-width: 700px) {
-		.exercise-tabs {
-			flex-wrap: nowrap;
-			overflow-x: auto;
-			-webkit-overflow-scrolling: touch;
-			padding-bottom: 0.25rem;
+	@media (max-width: 480px) {
+		.exercises-page__toolbar {
+			flex-direction: column;
+			align-items: stretch;
 		}
 
-		.exercise-tabs :global(.mdc-button) {
-			flex: 0 0 auto;
+		.exercises-page__add {
+			margin-left: 0;
+			width: 100%;
 		}
 	}
 </style>

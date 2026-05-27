@@ -2,35 +2,43 @@
 
 @use '@smui/common/theme/color-palette';
 
-// Svelte Colors!
+// Calm slate + teal — professional health/fitness tone (not Svelte orange)
 @use '@smui/common/theme/index' as theme with (
-  $primary: #ff3e00,
-  $secondary: #676778,
-  $surface: #fff,
-  $background: #fff,
-  $error: color-palette.$red-900
+	$primary: #0d9488,
+	$secondary: #64748b,
+	$surface: #ffffff,
+	$background: #f1f5f9,
+	$error: color-palette.$red-700
 );
 
 :root {
-  --app-background: #{theme.$background};
-  --app-on-background: rgba(0, 0, 0, 0.87);
-  --app-surface: #{theme.$surface};
-  --app-on-surface: #{theme.$on-surface};
-  --app-muted: rgba(0, 0, 0, 0.6);
-  --app-error: #{theme.$error};
-  --app-border: rgba(0, 0, 0, 0.12);
-  --app-input-bg: #{theme.$surface};
+	--app-background: #{theme.$background};
+	--app-on-background: #0f172a;
+	--app-surface: #{theme.$surface};
+	--app-on-surface: #1e293b;
+	--app-muted: #64748b;
+	--app-error: #{theme.$error};
+	--app-border: #e2e8f0;
+	--app-input-bg: #{theme.$surface};
+	--app-accent: #{theme.$primary};
+	--app-accent-subtle: #{color.change(theme.$primary, $alpha: 0.1)};
+	--app-accent-strong: #0f766e;
+	--app-fab-bg: #0f766e;
+	--app-fab-fg: #ffffff;
+	--app-trend-up: #15803d;
+	--app-trend-down: #b91c1c;
+	--app-pr: #ca8a04;
 }
 
 html,
 body {
-  background-color: var(--app-background);
-  color: var(--app-on-background);
+	background-color: var(--app-background);
+	color: var(--app-on-background);
 }
 
 a {
-  color: #40b3ff;
+	color: #0f766e;
 }
 a:visited {
-  color: color.scale(#40b3ff, $lightness: -35%);
+	color: color.scale(#0f766e, $lightness: -12%);
 }

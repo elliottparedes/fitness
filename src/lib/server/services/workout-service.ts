@@ -1,4 +1,10 @@
 import type { WorkoutEntryView } from '$lib/domain/workout';
+import {
+	buildWorkoutHighlight,
+	daysBetween,
+	getWeekRange,
+	type WorkoutHighlightStat
+} from '$lib/workout-session-highlight';
 import { isStrengthCategory } from '$lib/domain/exercise';
 import { exerciseRepository } from '$lib/server/repositories/exercise-repository';
 import { workoutRepository } from '$lib/server/repositories/workout-repository';
@@ -51,6 +57,32 @@ export const workoutService = {
 			workout,
 			entries: enrichEntries(entries, sets, cardio)
 		};
+	},
+
+	async getSessionHighlight(
+		workoutId: string,
+		userId: string,
+		entries: WorkoutEntryView[],
+		performedAt: Date
+	): Promise<WorkoutHighlightStat | null> {
+		const { start, end } = getWeekRange(performedAt);
+		const [historicalMaxLbs, weekWorkouts, previousPerformedAt] = await Promise.all([
+			workoutRepository.getHistoricalMaxWeightLbsByExercise(userId, performedAt, workoutId),
+			workoutRepository.listWorkoutsInRange(userId, start, end),
+			workoutRepository.getPreviousWorkoutPerformedAt(userId, performedAt, workoutId)
+		]);
+
+		const daysSinceLastWorkout = previousPerformedAt
+			? daysBetween(previousPerformedAt, performedAt)
+			: null;
+
+		return buildWorkoutHighlight({
+			entries,
+			historicalMaxLbs,
+			weekWorkouts,
+			workoutId,
+			daysSinceLastWorkout
+		});
 	},
 
 	async assertOwned(workoutId: string, userId: string): Promise<ServiceResult<{ workoutId: string }>> {
@@ -197,6 +229,24 @@ export const workoutService = {
 		if (!entryId) return { ok: false, message: 'Entry not found.' };
 
 		await workoutRepository.deleteEntry(entryId);
+		return { ok: true, data: undefined };
+	},
+
+	async deleteSetFromForm(
+		workoutId: string,
+		userId: string,
+		formData: FormData
+	): Promise<ServiceResult<void>> {
+		const owned = await this.assertOwned(workoutId, userId);
+		if (!owned.ok) return owned;
+
+		const setId = formTrimmed(formData, 'setId');
+		if (!setId) return { ok: false, message: 'Set not found.' };
+
+		const set = await workoutRepository.findStrengthSetForUser(setId, userId);
+		if (!set) return { ok: false, message: 'Set not found.' };
+
+		await workoutRepository.deleteStrengthSet(setId);
 		return { ok: true, data: undefined };
 	}
 };

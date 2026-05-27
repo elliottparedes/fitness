@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, max, ne, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	cardioLogs,
@@ -153,6 +153,145 @@ export const workoutRepository = {
 			.from(strengthSets)
 			.where(eq(strengthSets.workoutEntryId, workoutEntryId));
 		return (row?.value ?? 0) + 1;
+	},
+
+	async findStrengthSetForUser(setId: string, userId: string) {
+		const [row] = await db
+			.select({
+				id: strengthSets.id,
+				workoutEntryId: strengthSets.workoutEntryId
+			})
+			.from(strengthSets)
+			.innerJoin(workoutEntries, eq(strengthSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.where(and(eq(strengthSets.id, setId), eq(workouts.userId, userId)))
+			.limit(1);
+		return row ?? null;
+	},
+
+	async deleteStrengthSet(setId: string) {
+		const [set] = await db
+			.select({ workoutEntryId: strengthSets.workoutEntryId })
+			.from(strengthSets)
+			.where(eq(strengthSets.id, setId))
+			.limit(1);
+		if (!set) return;
+
+		await db.delete(strengthSets).where(eq(strengthSets.id, setId));
+
+		const remaining = await db
+			.select({ id: strengthSets.id, setNumber: strengthSets.setNumber })
+			.from(strengthSets)
+			.where(eq(strengthSets.workoutEntryId, set.workoutEntryId))
+			.orderBy(asc(strengthSets.setNumber));
+
+		for (let i = 0; i < remaining.length; i++) {
+			const nextNumber = i + 1;
+			if (remaining[i].setNumber !== nextNumber) {
+				await db
+					.update(strengthSets)
+					.set({ setNumber: nextNumber })
+					.where(eq(strengthSets.id, remaining[i].id));
+			}
+		}
+	},
+
+	async getStrengthSetsForProgress(userId: string, since: Date) {
+		return db
+			.select({
+				exerciseId: exercises.id,
+				exerciseName: exercises.name,
+				category: exercises.category,
+				workoutId: workouts.id,
+				performedAt: workouts.performedAt,
+				reps: strengthSets.reps,
+				weight: strengthSets.weight,
+				weightUnit: strengthSets.weightUnit,
+				isWarmup: strengthSets.isWarmup
+			})
+			.from(strengthSets)
+			.innerJoin(workoutEntries, eq(strengthSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
+			.where(
+				and(
+					eq(workouts.userId, userId),
+					gte(workouts.performedAt, since),
+					ne(exercises.category, 'cardio')
+				)
+			)
+			.orderBy(workouts.performedAt);
+	},
+
+	async getCardioLogsForProgress(userId: string, since: Date) {
+		return db
+			.select({
+				exerciseId: exercises.id,
+				exerciseName: exercises.name,
+				category: exercises.category,
+				workoutId: workouts.id,
+				performedAt: workouts.performedAt,
+				durationSeconds: cardioLogs.durationSeconds,
+				distanceMeters: cardioLogs.distanceMeters
+			})
+			.from(cardioLogs)
+			.innerJoin(workoutEntries, eq(cardioLogs.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
+			.where(and(eq(workouts.userId, userId), gte(workouts.performedAt, since), eq(exercises.category, 'cardio')))
+			.orderBy(workouts.performedAt);
+	},
+
+	async listWorkoutsInRange(userId: string, from: Date, to: Date) {
+		return db
+			.select({ id: workouts.id, performedAt: workouts.performedAt })
+			.from(workouts)
+			.where(and(eq(workouts.userId, userId), gte(workouts.performedAt, from), lt(workouts.performedAt, to)))
+			.orderBy(workouts.performedAt);
+	},
+
+	async getPreviousWorkoutPerformedAt(userId: string, before: Date, excludeWorkoutId: string) {
+		const [row] = await db
+			.select({ performedAt: workouts.performedAt })
+			.from(workouts)
+			.where(
+				and(
+					eq(workouts.userId, userId),
+					lt(workouts.performedAt, before),
+					ne(workouts.id, excludeWorkoutId)
+				)
+			)
+			.orderBy(desc(workouts.performedAt))
+			.limit(1);
+		return row?.performedAt ?? null;
+	},
+
+	async getHistoricalMaxWeightLbsByExercise(
+		userId: string,
+		before: Date,
+		excludeWorkoutId: string
+	): Promise<Map<string, number>> {
+		const rows = await db
+			.select({
+				exerciseId: exercises.id,
+				maxLbs: sql<string>`max(case when ${strengthSets.weightUnit} = 'kg' then ${strengthSets.weight} * 2.20462 else ${strengthSets.weight} end)`
+			})
+			.from(strengthSets)
+			.innerJoin(workoutEntries, eq(strengthSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
+			.where(
+				and(
+					eq(workouts.userId, userId),
+					lt(workouts.performedAt, before),
+					ne(workouts.id, excludeWorkoutId),
+					eq(strengthSets.isWarmup, false),
+					ne(exercises.category, 'cardio')
+				)
+			)
+			.groupBy(exercises.id);
+
+		return new Map(rows.map((row) => [row.exerciseId, Number(row.maxLbs)]));
 	},
 
 	async strengthVolumeForUser(userId: string, from: Date, to: Date): Promise<number> {

@@ -1,8 +1,5 @@
 <script lang="ts">
-	import Button, { Label } from '@smui/button';
 	import Card, { Content } from '@smui/card';
-	import Select, { Option } from '@smui/select';
-	import HiddenField from '$lib/components/HiddenField.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
@@ -21,19 +18,19 @@
 	<Content style="padding: 1rem">
 		<h2 class="section-title section-title--on-surface">Strength unit</h2>
 		<form method="POST" action="?/updatePreferredWeightUnit" class="form-stack">
-			<HiddenField name="preferredWeightUnit" value={preferredWeightUnit} />
-			<Select bind:value={preferredWeightUnit} label="Default unit">
-				<Option value="lb">lbs</Option>
-				<Option value="kg">kg</Option>
-			</Select>
+			<label class="form-field">
+				<span class="form-field__label">Default unit</span>
+				<select class="native-input" name="preferredWeightUnit" bind:value={preferredWeightUnit}>
+					<option value="lb">lbs</option>
+					<option value="kg">kg</option>
+				</select>
+			</label>
 
 			{#if form?.message}
 				<p class="error-text" style="margin: 0">{form.message}</p>
 			{/if}
 
-			<Button variant="raised" type="submit">
-				<Label>Save preferences</Label>
-			</Button>
+			<button type="submit" class="btn btn--primary">Save preferences</button>
 		</form>
 	</Content>
 </Card>

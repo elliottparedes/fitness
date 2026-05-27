@@ -2,35 +2,42 @@
 
 @use '@smui/common/theme/color-palette';
 
-// Svelte Colors! (Dark Theme)
 @use '@smui/common/theme/index' as theme with (
-  $primary: #ff3e00,
-  $secondary: color.scale(#676778, $whiteness: -10%),
-  $surface: color.adjust(color-palette.$grey-900, $blue: +4),
-  $background: #000,
-  $error: color-palette.$red-700
+	$primary: #2dd4bf,
+	$secondary: #94a3b8,
+	$surface: #1e293b,
+	$background: #0f172a,
+	$error: color-palette.$red-400
 );
 
 :root {
-  --app-background: #{theme.$background};
-  --app-on-background: #{theme.$on-surface};
-  --app-surface: #{theme.$surface};
-  --app-on-surface: #{theme.$on-surface};
-  --app-muted: rgba(255, 255, 255, 0.7);
-  --app-error: #{theme.$error};
-  --app-border: rgba(255, 255, 255, 0.2);
-  --app-input-bg: #{color.adjust(color-palette.$grey-800, $blue: +2)};
+	--app-background: #{theme.$background};
+	--app-on-background: #f1f5f9;
+	--app-surface: #{theme.$surface};
+	--app-on-surface: #e2e8f0;
+	--app-muted: #94a3b8;
+	--app-error: #{theme.$error};
+	--app-border: #334155;
+	--app-input-bg: #273549;
+	--app-accent: #{theme.$primary};
+	--app-accent-subtle: #{color.change(theme.$primary, $alpha: 0.14)};
+	--app-accent-strong: #14b8a6;
+	--app-fab-bg: #0f766e;
+	--app-fab-fg: #ffffff;
+	--app-trend-up: #4ade80;
+	--app-trend-down: #f87171;
+	--app-pr: #facc15;
 }
 
 html,
 body {
-  background-color: var(--app-background);
-  color: var(--app-on-background);
+	background-color: var(--app-background);
+	color: var(--app-on-background);
 }
 
 a {
-  color: #40b3ff;
+	color: #5eead4;
 }
 a:visited {
-  color: color.scale(#40b3ff, $lightness: -35%);
+	color: color.scale(#5eead4, $lightness: -10%);
 }

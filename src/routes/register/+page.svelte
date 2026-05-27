@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Button, { Label } from '@smui/button';
 	import Textfield from '@smui/textfield';
 	import Card, { Content } from '@smui/card';
 	import HiddenField from '$lib/components/HiddenField.svelte';
@@ -26,9 +25,7 @@
 				<Textfield bind:value={name} label="Name" required style="width: 100%" />
 				<Textfield bind:value={email} label="Email" type="email" required style="width: 100%" />
 				<Textfield bind:value={password} label="Password (min 8 characters)" type="password" required style="width: 100%" />
-				<Button variant="raised" type="submit" style="width: 100%">
-					<Label>Register</Label>
-				</Button>
+				<button type="submit" class="btn btn--primary btn--block">Register</button>
 			</form>
 			<p class="muted">
 				Already have an account? <a href="/login">Sign in</a>

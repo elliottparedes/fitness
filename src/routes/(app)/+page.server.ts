@@ -1,4 +1,6 @@
 import type { PageServerLoad } from './$types';
+import { progressService } from '$lib/server/services/progress-service';
+import { userService } from '$lib/server/services/user-service';
 import { workoutService } from '$lib/server/services/workout-service';
 
 function startOfDay(date: Date): Date {
@@ -26,25 +28,16 @@ export const load: PageServerLoad = async ({ parent }) => {
 	const weekStart = new Date(now);
 	weekStart.setDate(now.getDate() - 6);
 	const thisWeekWorkouts = recentWorkouts.filter((workout) => workout.performedAt >= weekStart).length;
-	const priorWeekStart = new Date(weekStart);
-	priorWeekStart.setDate(weekStart.getDate() - 7);
-	const priorWeekEnd = new Date(weekStart);
-	priorWeekEnd.setMilliseconds(priorWeekEnd.getMilliseconds() - 1);
-	const thisWeekVolume = await workoutService.strengthVolumeForUser(session.user.id, weekStart, now);
-	const priorWeekVolume = await workoutService.strengthVolumeForUser(
-		session.user.id,
-		priorWeekStart,
-		priorWeekEnd
-	);
+	const preferredWeightUnit = await userService.getPreferredWeightUnit(session.user.id);
+	const exerciseProgress = await progressService.getDashboardCards(session.user.id, preferredWeightUnit);
 
 	return {
 		workouts,
+		exerciseProgress,
 		stats: {
 			thisWeekWorkouts,
-			thisWeekVolume,
-			volumeTrendPct:
-				priorWeekVolume <= 0 ? null : Math.round(((thisWeekVolume - priorWeekVolume) / priorWeekVolume) * 100),
-			streakDays: buildStreakDays(recentWorkouts)
+			streakDays: buildStreakDays(recentWorkouts),
+			prCount: exerciseProgress.filter((card) => card.isPr).length
 		}
 	};
 };

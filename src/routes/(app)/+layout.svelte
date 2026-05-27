@@ -1,13 +1,4 @@
 <script lang="ts">
-	import TopAppBar, { Row, Section, Title } from '@smui/top-app-bar';
-	import Drawer, {
-		Content as DrawerContent,
-		Header,
-		Scrim,
-		Title as DrawerTitle
-	} from '@smui/drawer';
-	import List, { Item, Graphic, Text } from '@smui/list';
-	import IconButton, { Icon } from '@smui/icon-button';
 	import ToastHost from '$lib/components/ToastHost.svelte';
 	import { page } from '$app/stores';
 	import type { LayoutData } from './$types';
@@ -16,107 +7,116 @@
 
 	let drawerOpen = $state(false);
 	const path = $derived($page.url.pathname);
+
+	const navItems = [
+		{ href: '/', label: 'Dashboard', icon: 'home', active: (p: string) => p === '/' },
+		{
+			href: '/workouts',
+			label: 'Workouts',
+			icon: 'fitness_center',
+			active: (p: string) => p.startsWith('/workouts')
+		},
+		{
+			href: '/exercises',
+			label: 'Exercises',
+			icon: 'list',
+			active: (p: string) => p.startsWith('/exercises')
+		},
+		{
+			href: '/preferences',
+			label: 'Preferences',
+			icon: 'settings',
+			active: (p: string) => p.startsWith('/preferences')
+		}
+	] as const;
+
+	function closeDrawer() {
+		drawerOpen = false;
+	}
+
+	$effect(() => {
+		if (!drawerOpen) return;
+
+		const onKeydown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') closeDrawer();
+		};
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		document.addEventListener('keydown', onKeydown);
+
+		return () => {
+			document.removeEventListener('keydown', onKeydown);
+			document.body.style.overflow = previousOverflow;
+		};
+	});
 </script>
 
 <div class="app-shell">
-	<TopAppBar variant="fixed">
-		<Row>
-			<Section>
-				<IconButton onclick={() => (drawerOpen = !drawerOpen)}>
-					<Icon class="material-icons">{drawerOpen ? 'close' : 'menu'}</Icon>
-				</IconButton>
-				<Title>Fitness Tracker</Title>
-			</Section>
-			<Section align="end" toolbar>
-				<span class="user-label">
-					{data.session.user?.name ?? data.session.user?.email}
-				</span>
-			</Section>
-		</Row>
-	</TopAppBar>
+	<header class="app-topbar">
+		<div class="app-topbar__start">
+			<button
+				type="button"
+				class="icon-btn"
+				aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
+				aria-expanded={drawerOpen}
+				aria-controls="app-drawer"
+				onclick={() => (drawerOpen = !drawerOpen)}
+			>
+				<span class="material-icons" aria-hidden="true">{drawerOpen ? 'close' : 'menu'}</span>
+			</button>
+			<h1 class="app-topbar__title">Fitness Tracker</h1>
+		</div>
+		<span class="app-topbar__user">{data.session.user?.name ?? data.session.user?.email}</span>
+	</header>
 
-	<Drawer bind:open={drawerOpen} variant="modal">
-		<Header>
-			<div class="drawer-header-row">
-				<DrawerTitle>Menu</DrawerTitle>
-				<IconButton class="drawer-close" onclick={() => (drawerOpen = false)}>
-					<Icon class="material-icons">close</Icon>
-				</IconButton>
+	{#if drawerOpen}
+		<button type="button" class="app-drawer__scrim" aria-label="Close menu" onclick={closeDrawer}></button>
+	{/if}
+
+	<aside
+		id="app-drawer"
+		class="app-drawer"
+		class:app-drawer--open={drawerOpen}
+		aria-hidden={!drawerOpen}
+		inert={!drawerOpen}
+	>
+		<div class="app-drawer__header">
+			<h2 class="app-drawer__title">Menu</h2>
+			<button type="button" class="icon-btn" aria-label="Close menu" onclick={closeDrawer}>
+				<span class="material-icons" aria-hidden="true">close</span>
+			</button>
+		</div>
+		<div class="app-drawer__body">
+			<nav aria-label="Main">
+				<ul class="app-nav">
+					{#each navItems as item}
+						<li>
+							<a
+								href={item.href}
+								class="app-nav__link"
+								class:app-nav__link--active={item.active(path)}
+								aria-current={item.active(path) ? 'page' : undefined}
+								onclick={closeDrawer}
+							>
+								<span class="material-icons" aria-hidden="true">{item.icon}</span>
+								{item.label}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</nav>
+			<div class="app-drawer__footer">
+				<form method="POST" action="/logout">
+					<button type="submit" class="btn btn--primary btn--block">Sign out</button>
+				</form>
 			</div>
-		</Header>
-		<DrawerContent>
-			<List>
-				<Item href="/" activated={path === '/'} onclick={() => (drawerOpen = false)}>
-					<Graphic class="material-icons">home</Graphic>
-					<Text>Dashboard</Text>
-				</Item>
-				<Item
-					href="/workouts"
-					activated={path.startsWith('/workouts')}
-					onclick={() => (drawerOpen = false)}
-				>
-					<Graphic class="material-icons">fitness_center</Graphic>
-					<Text>Workouts</Text>
-				</Item>
-				<Item
-					href="/exercises"
-					activated={path.startsWith('/exercises')}
-					onclick={() => (drawerOpen = false)}
-				>
-					<Graphic class="material-icons">list</Graphic>
-					<Text>Exercises</Text>
-				</Item>
-				<Item
-					href="/preferences"
-					activated={path.startsWith('/preferences')}
-					onclick={() => (drawerOpen = false)}
-				>
-					<Graphic class="material-icons">settings</Graphic>
-					<Text>Preferences</Text>
-				</Item>
-			</List>
-			<form method="POST" action="/logout" style="padding: 1rem">
-				<button type="submit" class="mdc-button mdc-button--raised">Sign out</button>
-			</form>
-		</DrawerContent>
-	</Drawer>
-	<Scrim />
+		</div>
+	</aside>
 
-	<div class="app-content" style="margin-top: 4rem">
+	<main class="app-content" inert={drawerOpen}>
 		{@render children()}
-	</div>
+	</main>
 </div>
 
 <ToastHost />
-
-<style>
-	.drawer-header-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-		width: 100%;
-		min-height: 3rem;
-	}
-
-	.drawer-header-row :global(.mdc-drawer__title) {
-		flex: 1;
-		margin: 0;
-		min-width: 0;
-	}
-
-	.drawer-header-row :global(.mdc-drawer__title::before) {
-		content: none;
-	}
-
-	.drawer-header-row :global(.drawer-close) {
-		flex-shrink: 0;
-		margin: 0 -0.5rem 0 0;
-	}
-
-	@media (max-width: 700px) {
-		:global(.user-label) {
-			display: none;
-		}
-	}
-</style>

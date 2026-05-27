@@ -14,12 +14,19 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	const exercises = await exerciseService.listForUser(session.user.id);
 	const preferredWeightUnit = await userService.getPreferredWeightUnit(session.user.id);
+	const highlight = await workoutService.getSessionHighlight(
+		params.id,
+		session.user.id,
+		detail.entries,
+		detail.workout.performedAt
+	);
 
 	return {
 		workout: detail.workout,
 		entries: detail.entries,
 		exercises,
-		preferredWeightUnit
+		preferredWeightUnit,
+		highlight
 	};
 };
 
@@ -36,6 +43,15 @@ export const actions: Actions = {
 		const err = failIfError(await workoutService.addSetFromForm(params.id, session.user.id, await request.formData()));
 		if (err) return err;
 		return { success: true, toast: 'Set added' };
+	},
+
+	deleteSet: async ({ request, params, locals }) => {
+		const session = await requireSession(locals);
+		const err = failIfError(
+			await workoutService.deleteSetFromForm(params.id, session.user.id, await request.formData())
+		);
+		if (err) return err;
+		return { success: true, toast: 'Set removed' };
 	},
 
 	updateCardio: async ({ request, params, locals }) => {

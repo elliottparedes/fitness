@@ -1,3 +1,35 @@
+/** Meters per mile (international). */
+export const METERS_PER_MILE = 1609.344;
+
+export function metersToMiles(meters: number): number {
+	return meters / METERS_PER_MILE;
+}
+
+export function milesToMeters(miles: number): number {
+	return miles * METERS_PER_MILE;
+}
+
+export function formatDistanceMiles(meters: number | null | undefined, fractionDigits = 2): string {
+	if (meters == null || meters <= 0) return '';
+	return `${metersToMiles(meters).toFixed(fractionDigits)} mi`;
+}
+
+/** Miles from form input → meters for storage, or null if empty/invalid. */
+export function milesInputToMeters(value: string | number | null | undefined): number | null {
+	if (value == null || value === '') return null;
+	const trimmed = (typeof value === 'string' ? value : String(value)).trim();
+	if (!trimmed) return null;
+	const miles = Number(trimmed);
+	if (!Number.isFinite(miles) || miles < 0) return null;
+	return Math.round(milesToMeters(miles));
+}
+
+/** Meters → miles for form fields. */
+export function metersToMilesInputValue(meters: number | null | undefined): string {
+	if (meters == null || meters <= 0) return '';
+	return metersToMiles(meters).toFixed(2);
+}
+
 export function formatDateTime(value: Date | string): string {
 	return new Intl.DateTimeFormat(undefined, {
 		dateStyle: 'medium',

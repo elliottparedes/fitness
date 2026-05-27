@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Button, { Label } from '@smui/button';
 	import Textfield from '@smui/textfield';
 	import Card, { Content } from '@smui/card';
 	import HiddenField from '$lib/components/HiddenField.svelte';
@@ -30,12 +29,8 @@
 			<Textfield bind:value={performedAt} label="Date & time" type="datetime-local" required style="width: 100%" />
 			<Textfield bind:value={notes} label="Notes" textarea input$rows={3} style="width: 100%" />
 			<div class="row-actions">
-				<Button variant="raised" type="submit">
-					<Label>Start workout</Label>
-				</Button>
-				<Button href="/workouts">
-					<Label>Cancel</Label>
-				</Button>
+				<button type="submit" class="btn btn--primary">Start workout</button>
+				<a href="/workouts" class="btn btn--secondary">Cancel</a>
 			</div>
 		</form>
 	</Content>
