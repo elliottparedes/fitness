@@ -238,8 +238,9 @@
 	}
 
 	.category-tab--active {
-		background: var(--app-accent, #0d9488);
-		color: #fff;
+		background: var(--app-fab-bg, #0f766e);
+		color: var(--app-fab-fg, #fff);
+		font-weight: 600;
 	}
 
 	.first-set-fields {

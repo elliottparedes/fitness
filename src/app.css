@@ -615,9 +615,12 @@ body {
 	outline-offset: 1px;
 }
 
-.category-filter__tab--active {
-	background: var(--app-accent, #0d9488);
-	color: #fff;
+.category-filter__tab--active,
+a.category-filter__tab--active,
+a.category-filter__tab--active:visited {
+	background: var(--app-fab-bg, #0f766e);
+	color: var(--app-fab-fg, #fff);
+	font-weight: 600;
 }
 
 .category-filter__full {

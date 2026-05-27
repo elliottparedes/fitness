@@ -19,7 +19,24 @@
 	let muscleGroup = $state('');
 	let description = $state('');
 
+	const defaultCategory = $derived<ExerciseCategory>(data.category ?? 'free_weight');
+
 	const hasCustomExercises = $derived(data.myExercises.length > 0);
+
+	function openAddDialog() {
+		category = defaultCategory;
+		name = '';
+		muscleGroup = '';
+		description = '';
+		dialogOpen = true;
+	}
+
+	function resetAddForm() {
+		name = '';
+		muscleGroup = '';
+		description = '';
+		category = defaultCategory;
+	}
 
 	const tabs: { value: ExerciseCategory | null; label: string; shortLabel: string }[] = [
 		{ value: null, label: 'All', shortLabel: 'All' },
@@ -58,9 +75,7 @@
 	$effect(() => {
 		if (form?.success) {
 			dialogOpen = false;
-			name = '';
-			muscleGroup = '';
-			description = '';
+			resetAddForm();
 		}
 	});
 </script>
@@ -90,7 +105,7 @@
 		<p class="muted exercises-page__count">
 			{data.exercises.length} exercise{data.exercises.length === 1 ? '' : 's'}
 		</p>
-		<button type="button" class="btn btn--primary exercises-page__add" onclick={() => (dialogOpen = true)}>
+		<button type="button" class="btn btn--primary exercises-page__add" onclick={openAddDialog}>
 			<span class="material-icons" aria-hidden="true">add</span>
 			Add custom
 		</button>

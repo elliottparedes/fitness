@@ -1,11 +1,13 @@
 <script lang="ts">
 	import ToastHost from '$lib/components/ToastHost.svelte';
+	import { untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	let drawerOpen = $state(false);
+	let menuButtonEl = $state<HTMLButtonElement | null>(null);
 	const path = $derived($page.url.pathname);
 
 	const navItems = [
@@ -31,8 +33,23 @@
 	] as const;
 
 	function closeDrawer() {
+		if (!drawerOpen) return;
+
+		const drawer = document.getElementById('app-drawer');
+		const active = document.activeElement as HTMLElement | null;
+		if (active && drawer?.contains(active)) {
+			active.blur();
+		}
+
 		drawerOpen = false;
+		menuButtonEl?.focus();
 	}
+
+	// Close on navigation only — untrack so opening the drawer doesn't re-trigger this effect.
+	$effect(() => {
+		path;
+		untrack(() => closeDrawer());
+	});
 
 	$effect(() => {
 		if (!drawerOpen) return;
@@ -58,10 +75,14 @@
 			<button
 				type="button"
 				class="icon-btn"
+				bind:this={menuButtonEl}
 				aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
 				aria-expanded={drawerOpen}
 				aria-controls="app-drawer"
-				onclick={() => (drawerOpen = !drawerOpen)}
+				onclick={() => {
+					if (drawerOpen) closeDrawer();
+					else drawerOpen = true;
+				}}
 			>
 				<span class="material-icons" aria-hidden="true">{drawerOpen ? 'close' : 'menu'}</span>
 			</button>
@@ -78,8 +99,8 @@
 		id="app-drawer"
 		class="app-drawer"
 		class:app-drawer--open={drawerOpen}
-		aria-hidden={!drawerOpen}
 		inert={!drawerOpen}
+		aria-hidden={drawerOpen ? undefined : true}
 	>
 		<div class="app-drawer__header">
 			<h2 class="app-drawer__title">Menu</h2>
