@@ -100,6 +100,15 @@ export const workoutRepository = {
 		return (row?.value ?? 0) + 1;
 	},
 
+	async hasEntryForExercise(workoutId: string, exerciseId: string): Promise<boolean> {
+		const [row] = await db
+			.select({ id: workoutEntries.id })
+			.from(workoutEntries)
+			.where(and(eq(workoutEntries.workoutId, workoutId), eq(workoutEntries.exerciseId, exerciseId)))
+			.limit(1);
+		return Boolean(row);
+	},
+
 	async createEntry(input: {
 		id?: string;
 		workoutId: string;

@@ -12,6 +12,12 @@ import type { CreateWorkoutInput } from '$lib/domain/workout';
 
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
+function isDuplicateWorkoutEntryError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const maybe = error as { code?: string; message?: string };
+	return maybe.code === 'ER_DUP_ENTRY' || /duplicate entry/i.test(maybe.message ?? '');
+}
+
 function enrichEntries(
 	entries: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['entries'],
 	sets: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['sets'],
@@ -110,17 +116,28 @@ export const workoutService = {
 
 		const exercise = await exerciseRepository.findById(exerciseId);
 		if (!exercise) return { ok: false, message: 'Exercise not found.' };
+		if (await workoutRepository.hasEntryForExercise(workoutId, exerciseId)) {
+			return { ok: false, message: 'This exercise is already in the workout.' };
+		}
 
 		const sortOrder = await workoutRepository.nextEntrySortOrder(workoutId);
 		const machineLabel =
 			exercise.category === 'machine' ? formTrimmed(formData, 'machineLabel') || null : null;
 
-		const entryId = await workoutRepository.createEntry({
-			workoutId,
-			exerciseId,
-			sortOrder,
-			machineLabel
-		});
+		let entryId: string;
+		try {
+			entryId = await workoutRepository.createEntry({
+				workoutId,
+				exerciseId,
+				sortOrder,
+				machineLabel
+			});
+		} catch (error) {
+			if (isDuplicateWorkoutEntryError(error)) {
+				return { ok: false, message: 'This exercise is already in the workout.' };
+			}
+			throw error;
+		}
 
 		if (exercise.category === 'cardio') {
 			const cardio = parseCardioFromForm(formData);

@@ -8,6 +8,7 @@ import {
 	primaryKey,
 	text,
 	timestamp,
+	uniqueIndex,
 	varchar
 } from 'drizzle-orm/mysql-core';
 import { relations } from 'drizzle-orm';
@@ -112,20 +113,29 @@ export const workouts = mysqlTable('workouts', {
 	createdAt: timestamp('created_at', { mode: 'date', fsp: 3 }).defaultNow().notNull()
 });
 
-export const workoutEntries = mysqlTable('workout_entries', {
-	id: varchar('id', { length: 36 })
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	workoutId: varchar('workout_id', { length: 36 })
-		.notNull()
-		.references(() => workouts.id, { onDelete: 'cascade' }),
-	exerciseId: varchar('exercise_id', { length: 36 })
-		.notNull()
-		.references(() => exercises.id, { onDelete: 'restrict' }),
-	sortOrder: int('sort_order').notNull().default(0),
-	machineLabel: varchar('machine_label', { length: 255 }),
-	notes: text('notes')
-});
+export const workoutEntries = mysqlTable(
+	'workout_entries',
+	{
+		id: varchar('id', { length: 36 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		workoutId: varchar('workout_id', { length: 36 })
+			.notNull()
+			.references(() => workouts.id, { onDelete: 'cascade' }),
+		exerciseId: varchar('exercise_id', { length: 36 })
+			.notNull()
+			.references(() => exercises.id, { onDelete: 'restrict' }),
+		sortOrder: int('sort_order').notNull().default(0),
+		machineLabel: varchar('machine_label', { length: 255 }),
+		notes: text('notes')
+	},
+	(table) => ({
+		uniqueWorkoutExercise: uniqueIndex('workout_entries_workout_exercise_unique').on(
+			table.workoutId,
+			table.exerciseId
+		)
+	})
+);
 
 export const strengthSets = mysqlTable('strength_sets', {
 	id: varchar('id', { length: 36 })
