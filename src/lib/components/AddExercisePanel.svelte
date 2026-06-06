@@ -8,7 +8,8 @@
 	import HiddenField from '$lib/components/HiddenField.svelte';
 	import { milesInputToMeters } from '$lib/format';
 	import { toastFromActionResult } from '$lib/ui/toast.svelte';
-	import type { WorkoutEntryView } from '$lib/domain/workout';
+	import type { LastRecordedSet, WorkoutEntryView } from '$lib/domain/workout';
+	import { formatWeight } from '$lib/format';
 
 	let {
 		data,
@@ -20,10 +21,11 @@
 			exercises: { id: string; name: string; category: ExerciseCategory }[];
 			entries: WorkoutEntryView[];
 			preferredWeightUnit: 'kg' | 'lb';
+			lastSetsByExerciseId: Record<string, LastRecordedSet>;
 		};
 		formMessage?: string;
 		unsaved?: boolean;
-		onadded?: () => void;
+		onadded?: (entryId: string) => void;
 	} = $props();
 
 	let tab: ExerciseCategory = $state('free_weight');
@@ -56,6 +58,14 @@
 		tabExercises.find(
 			(exercise) => exercise.name.toLowerCase() === exerciseQuery.trim().toLowerCase()
 		) ?? null
+	);
+
+	const resolvedExerciseId = $derived(
+		selectedExerciseId || exactExerciseMatch?.id || filteredExercises[0]?.id || ''
+	);
+
+	const previousLastSet = $derived(
+		resolvedExerciseId ? (data.lastSetsByExerciseId[resolvedExerciseId] ?? null) : null
 	);
 
 	const hasUnsavedEdits = $derived.by(() => {
@@ -95,9 +105,16 @@
 		const matchingEntries = data.entries.filter((entry) => entry.exerciseId === selectedExerciseId);
 		const lastEntry = matchingEntries.at(-1);
 		const lastSet = lastEntry?.sets.at(-1);
-		if (!lastSet) return;
-		reps = `${lastSet.reps}`;
-		weight = convertWeightToUnit(lastSet.weight, lastSet.weightUnit, data.preferredWeightUnit);
+		if (lastSet) {
+			reps = `${lastSet.reps}`;
+			weight = convertWeightToUnit(lastSet.weight, lastSet.weightUnit, data.preferredWeightUnit);
+			return;
+		}
+		const recorded = data.lastSetsByExerciseId[selectedExerciseId];
+		if (recorded) {
+			reps = `${recorded.reps}`;
+			weight = convertWeightToUnit(recorded.weight, recorded.weightUnit, data.preferredWeightUnit);
+		}
 	});
 
 	const enhanceAddEntry = ({ formData }: { formData: FormData }) => {
@@ -125,10 +142,11 @@
 			await applyAction(result);
 			toastFromActionResult(result);
 			if (result.type === 'success') {
+				const entryId = (result.data as { entryId?: string } | undefined)?.entryId;
 				exerciseQuery = '';
 				selectedExerciseId = '';
 				await invalidateAll();
-				onadded?.();
+				if (entryId) onadded?.(entryId);
 			}
 		};
 	};
@@ -184,6 +202,14 @@
 			<Textfield bind:value={calories} label="Calories" type="number" style="width: 100%" />
 			<Textfield bind:value={avgHeartRate} label="Avg heart rate" type="number" style="width: 100%" />
 		{:else}
+			{#if previousLastSet}
+				<p class="best-last-workout-hint">
+					<span class="best-last-workout-hint__label">Best last workout</span>
+					<span class="best-last-workout-hint__value">
+						{previousLastSet.reps} × {formatWeight(previousLastSet.weight, previousLastSet.weightUnit)}
+					</span>
+				</p>
+			{/if}
 			<div class="first-set-fields">
 				<Textfield bind:value={reps} label="Reps" type="number" style="width: 100%" />
 				<Textfield bind:value={weight} label={weightLabel} type="number" style="width: 100%" />
@@ -263,5 +289,36 @@
 
 	.add-exercise-submit .material-icons {
 		font-size: 1.35rem;
+	}
+
+	.best-last-workout-hint {
+		margin: 0;
+		padding: 0.8rem 0.9rem;
+		border-radius: 0.65rem;
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--app-pr, #facc15) 28%, var(--app-surface, #1e293b)),
+			color-mix(in srgb, var(--app-pr, #facc15) 12%, var(--app-surface, #1e293b))
+		);
+		border: 1px solid color-mix(in srgb, var(--app-pr, #facc15) 55%, var(--app-border));
+		box-shadow: 0 2px 12px color-mix(in srgb, var(--app-pr, #facc15) 22%, transparent);
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.best-last-workout-hint__label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--app-pr, #facc15);
+	}
+
+	.best-last-workout-hint__value {
+		font-size: 1.1rem;
+		font-weight: 800;
+		color: var(--app-pr, #facc15);
 	}
 </style>

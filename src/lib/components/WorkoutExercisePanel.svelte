@@ -10,19 +10,21 @@
 		milesInputToMeters
 	} from '$lib/format';
 	import { CATEGORY_LABELS } from '$lib/domain/exercise';
-	import { convertWeightToUnit } from '$lib/progress/metrics';
+	import { convertWeightToUnit, weightToLbs } from '$lib/progress/metrics';
 	import { toastFromActionResult } from '$lib/ui/toast.svelte';
-	import type { WorkoutEntryView } from '$lib/domain/workout';
+	import type { LastRecordedSet, WorkoutEntryView } from '$lib/domain/workout';
 
 	let {
 		entry,
 		preferredWeightUnit,
+		previousLastSet = null,
 		unsaved = $bindable(false),
 		onclose,
 		onremoved
 	}: {
 		entry: WorkoutEntryView;
 		preferredWeightUnit: 'kg' | 'lb';
+		previousLastSet?: LastRecordedSet | null;
 		unsaved?: boolean;
 		onclose?: () => void;
 		onremoved?: () => void;
@@ -49,6 +51,29 @@
 	const repeatLastWeight = $derived(
 		lastSet ? convertWeightToUnit(lastSet.weight, lastSet.weightUnit, preferredWeightUnit) : '0'
 	);
+
+	const bestSessionSet = $derived.by(() => {
+		if (entry.sets.length === 0) return null;
+		const workingSets = entry.sets.filter((set) => !set.isWarmup);
+		const pool = workingSets.length > 0 ? workingSets : entry.sets;
+		return pool.reduce((best, set) => {
+			const setLbs = weightToLbs(set.weight, set.weightUnit);
+			const bestLbs = weightToLbs(best.weight, best.weightUnit);
+			if (setLbs > bestLbs || (setLbs === bestLbs && set.reps > best.reps)) return set;
+			return best;
+		});
+	});
+
+	const lastRecordedHint = $derived.by(() => {
+		const target = previousLastSet ?? bestSessionSet;
+		if (!target) return null;
+		return {
+			label: 'Best last workout',
+			reps: target.reps,
+			weight: target.weight,
+			weightUnit: target.weightUnit
+		};
+	});
 
 	const savedCardioDuration = $derived(
 		entry.cardio ? String(Math.round(entry.cardio.durationSeconds / 60)) : ''
@@ -216,6 +241,14 @@
 		>
 			<input type="hidden" name="entryId" value={entry.id} />
 			<input type="hidden" name="weightUnit" value={preferredWeightUnit} />
+			{#if lastRecordedHint}
+				<p class="best-last-workout-hint">
+					<span class="best-last-workout-hint__label">{lastRecordedHint.label}</span>
+					<span class="best-last-workout-hint__value">
+						{lastRecordedHint.reps} × {formatWeight(lastRecordedHint.weight, lastRecordedHint.weightUnit)}
+					</span>
+				</p>
+			{/if}
 			<p class="add-set-form__label">Add set</p>
 			<div class="add-set-form__fields">
 				<label class="field">
@@ -240,23 +273,6 @@
 				Warmup set
 			</label>
 			<div class="add-set-form__actions">
-				{#if lastSet}
-					<button
-						type="button"
-						class="btn btn--secondary"
-						disabled={addingSet}
-						onclick={() => {
-							reps = `${lastSet.reps}`;
-							weight = convertWeightToUnit(
-								lastSet.weight,
-								lastSet.weightUnit,
-								preferredWeightUnit
-							);
-						}}
-					>
-						Use last
-					</button>
-				{/if}
 				<button type="submit" class="btn btn--primary" disabled={addingSet}>
 					{addingSet ? 'Adding…' : 'Add set'}
 				</button>
@@ -324,6 +340,37 @@
 
 	.exercise-panel__meta {
 		margin: 0;
+	}
+
+	.best-last-workout-hint {
+		margin: 0;
+		padding: 0.8rem 0.9rem;
+		border-radius: 0.65rem;
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--app-pr, #facc15) 28%, var(--app-surface, #1e293b)),
+			color-mix(in srgb, var(--app-pr, #facc15) 12%, var(--app-surface, #1e293b))
+		);
+		border: 1px solid color-mix(in srgb, var(--app-pr, #facc15) 55%, var(--app-border));
+		box-shadow: 0 2px 12px color-mix(in srgb, var(--app-pr, #facc15) 22%, transparent);
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.best-last-workout-hint__label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--app-pr, #facc15);
+	}
+
+	.best-last-workout-hint__value {
+		font-size: 1.1rem;
+		font-weight: 800;
+		color: var(--app-pr, #facc15);
 	}
 
 	.exercise-panel__empty {

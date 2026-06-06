@@ -14,28 +14,41 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	const exercises = await exerciseService.listForUser(session.user.id);
 	const preferredWeightUnit = await userService.getPreferredWeightUnit(session.user.id);
-	const highlight = await workoutService.getSessionHighlight(
-		params.id,
-		session.user.id,
-		detail.entries,
-		detail.workout.performedAt
-	);
+	const [highlight, lastSetsByExercise] = await Promise.all([
+		workoutService.getSessionHighlight(
+			params.id,
+			session.user.id,
+			detail.entries,
+			detail.workout.performedAt
+		),
+		workoutService.getLastSetsByExercise(session.user.id, params.id)
+	]);
 
 	return {
 		workout: detail.workout,
 		entries: detail.entries,
 		exercises,
 		preferredWeightUnit,
-		highlight
+		highlight,
+		lastSetsByExerciseId: Object.fromEntries(lastSetsByExercise)
 	};
 };
 
 export const actions: Actions = {
 	addEntry: async ({ request, params, locals }) => {
 		const session = await requireSession(locals);
-		const err = failIfError(await workoutService.addEntryFromForm(params.id, session.user.id, await request.formData()));
+		const result = await workoutService.addEntryFromForm(
+			params.id,
+			session.user.id,
+			await request.formData()
+		);
+		const err = failIfError(result);
 		if (err) return err;
-		return { success: true, toast: 'Exercise added to workout' };
+		return {
+			success: true,
+			toast: 'Exercise added to workout',
+			entryId: result.ok ? result.data.entryId : ''
+		};
 	},
 
 	addSet: async ({ request, params, locals }) => {

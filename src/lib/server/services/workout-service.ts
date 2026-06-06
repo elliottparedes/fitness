@@ -135,11 +135,15 @@ export const workoutService = {
 		await workoutRepository.delete(workoutId, userId);
 	},
 
+	async getLastSetsByExercise(userId: string, excludeWorkoutId: string) {
+		return workoutRepository.getLastStrengthSetsByExercise(userId, excludeWorkoutId);
+	},
+
 	async addEntryFromForm(
 		workoutId: string,
 		userId: string,
 		formData: FormData
-	): Promise<ServiceResult<void>> {
+	): Promise<ServiceResult<{ entryId: string }>> {
 		const owned = await this.assertOwned(workoutId, userId);
 		if (!owned.ok) return owned;
 
@@ -181,7 +185,7 @@ export const workoutService = {
 			await workoutRepository.insertStrengthSet(entryId, 1, set);
 		}
 
-		return { ok: true, data: undefined };
+		return { ok: true, data: { entryId } };
 	},
 
 	async addSetFromForm(

@@ -121,6 +121,12 @@
 		openSheet('exercise');
 	}
 
+	function onExerciseAdded(entryId: string) {
+		addExerciseUnsaved = false;
+		activeEntryId = entryId;
+		sheetView = 'exercise';
+	}
+
 	async function confirmDeleteWorkout() {
 		const response = await fetch('?/deleteWorkout', { method: 'POST', body: new FormData() });
 		const result = deserialize(await response.text());
@@ -250,12 +256,13 @@
 			{data}
 			formMessage={form?.message ?? ''}
 			bind:unsaved={addExerciseUnsaved}
-			onadded={closeSheet}
+			onadded={onExerciseAdded}
 		/>
 	{:else if sheetView === 'exercise' && activeEntry}
 		<WorkoutExercisePanel
 			entry={activeEntry}
 			preferredWeightUnit={data.preferredWeightUnit}
+			previousLastSet={data.lastSetsByExerciseId[activeEntry.exerciseId] ?? null}
 			bind:unsaved={exerciseUnsaved}
 			onclose={tryCloseSheet}
 			onremoved={closeSheet}

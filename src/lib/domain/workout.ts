@@ -23,6 +23,13 @@ export type StrengthSetView = {
 	isWarmup: boolean;
 };
 
+/** Last logged working set for an exercise from a prior workout. */
+export type LastRecordedSet = {
+	reps: number;
+	weight: string;
+	weightUnit: 'kg' | 'lb';
+};
+
 export type CardioLogView = {
 	workoutEntryId: string;
 	durationSeconds: number;

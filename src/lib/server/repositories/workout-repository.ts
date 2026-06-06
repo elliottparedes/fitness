@@ -9,6 +9,7 @@ import {
 } from '$lib/server/db/schema';
 import type { CardioInput, StrengthSetInput } from '$lib/server/validation/form';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from '$lib/domain/workout';
+import { weightToLbs } from '$lib/progress/metrics';
 
 export const workoutRepository = {
 	async listForUser(userId: string, limit = 50) {
@@ -264,6 +265,69 @@ export const workoutRepository = {
 			.orderBy(desc(workouts.performedAt))
 			.limit(1);
 		return row?.performedAt ?? null;
+	},
+
+	async getLastStrengthSetsByExercise(
+		userId: string,
+		excludeWorkoutId: string
+	): Promise<Map<string, { reps: number; weight: string; weightUnit: 'kg' | 'lb' }>> {
+		const rows = await db
+			.select({
+				exerciseId: exercises.id,
+				workoutId: workouts.id,
+				reps: strengthSets.reps,
+				weight: strengthSets.weight,
+				weightUnit: strengthSets.weightUnit,
+				performedAt: workouts.performedAt
+			})
+			.from(strengthSets)
+			.innerJoin(workoutEntries, eq(strengthSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
+			.where(
+				and(
+					eq(workouts.userId, userId),
+					ne(workouts.id, excludeWorkoutId),
+					ne(exercises.category, 'cardio'),
+					eq(strengthSets.isWarmup, false)
+				)
+			)
+			.orderBy(desc(workouts.performedAt));
+
+		const lastWorkoutByExercise = new Map<string, string>();
+		const setsFromLastWorkout = new Map<
+			string,
+			{ reps: number; weight: string; weightUnit: 'kg' | 'lb' }[]
+		>();
+
+		for (const row of rows) {
+			if (!lastWorkoutByExercise.has(row.exerciseId)) {
+				lastWorkoutByExercise.set(row.exerciseId, row.workoutId);
+			}
+			if (lastWorkoutByExercise.get(row.exerciseId) !== row.workoutId) continue;
+
+			const list = setsFromLastWorkout.get(row.exerciseId) ?? [];
+			list.push({
+				reps: row.reps,
+				weight: row.weight,
+				weightUnit: row.weightUnit
+			});
+			setsFromLastWorkout.set(row.exerciseId, list);
+		}
+
+		const map = new Map<string, { reps: number; weight: string; weightUnit: 'kg' | 'lb' }>();
+		for (const [exerciseId, sets] of setsFromLastWorkout) {
+			const best = sets.reduce((currentBest, set) => {
+				const setLbs = weightToLbs(set.weight, set.weightUnit);
+				const bestLbs = weightToLbs(currentBest.weight, currentBest.weightUnit);
+				if (setLbs > bestLbs || (setLbs === bestLbs && set.reps > currentBest.reps)) {
+					return set;
+				}
+				return currentBest;
+			});
+			map.set(exerciseId, best);
+		}
+		return map;
 	},
 
 	async getHistoricalMaxWeightLbsByExercise(
