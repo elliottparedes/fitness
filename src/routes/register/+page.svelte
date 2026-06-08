@@ -1,7 +1,4 @@
 <script lang="ts">
-	import Textfield from '@smui/textfield';
-	import Card, { Content } from '@smui/card';
-	import HiddenField from '$lib/components/HiddenField.svelte';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -12,24 +9,55 @@
 </script>
 
 <div class="auth-page">
-	<Card class="auth-card">
-		<Content class="form-stack" style="padding: 1.5rem">
+	<div class="auth-card">
+		<div class="auth-card-content form-stack">
 			<h1 class="page-title" style="margin-bottom: 0.5rem">Create account</h1>
 			{#if form?.message}
 				<p class="error-text">{form.message}</p>
 			{/if}
 			<form method="POST" class="form-stack">
-				<HiddenField name="name" value={name} />
-				<HiddenField name="email" value={email} />
-				<HiddenField name="password" value={password} />
-				<Textfield bind:value={name} label="Name" required style="width: 100%" />
-				<Textfield bind:value={email} label="Email" type="email" required style="width: 100%" />
-				<Textfield bind:value={password} label="Password (min 8 characters)" type="password" required style="width: 100%" />
+				<div class="form-field">
+					<label class="form-field__label" for="name">Name</label>
+					<input
+						id="name"
+						class="native-input"
+						type="text"
+						name="name"
+						bind:value={name}
+						required
+						autocomplete="name"
+					/>
+				</div>
+				<div class="form-field">
+					<label class="form-field__label" for="email">Email</label>
+					<input
+						id="email"
+						class="native-input"
+						type="email"
+						name="email"
+						bind:value={email}
+						required
+						autocomplete="email"
+					/>
+				</div>
+				<div class="form-field">
+					<label class="form-field__label" for="password">Password (min 8 characters)</label>
+					<input
+						id="password"
+						class="native-input"
+						type="password"
+						name="password"
+						bind:value={password}
+						required
+						minlength="8"
+						autocomplete="new-password"
+					/>
+				</div>
 				<button type="submit" class="btn btn--primary btn--block">Register</button>
 			</form>
 			<p class="muted">
 				Already have an account? <a href="/login">Sign in</a>
 			</p>
-		</Content>
-	</Card>
+		</div>
+	</div>
 </div>

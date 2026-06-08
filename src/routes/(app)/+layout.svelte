@@ -86,7 +86,10 @@
 			>
 				<span class="material-icons" aria-hidden="true">{drawerOpen ? 'close' : 'menu'}</span>
 			</button>
-			<h1 class="app-topbar__title">Fitness Tracker</h1>
+			<div class="app-topbar__brand">
+				<img class="app-topbar__icon" src="/favicon.svg" alt="" width="28" height="28" />
+				<h1 class="app-topbar__title">Fitness Tracker</h1>
+			</div>
 		</div>
 		<span class="app-topbar__user">{data.session.user?.name ?? data.session.user?.email}</span>
 	</header>
