@@ -269,7 +269,8 @@ export const workoutRepository = {
 
 	async getLastStrengthSetsByExercise(
 		userId: string,
-		excludeWorkoutId: string
+		excludeWorkoutId: string,
+		before: Date
 	): Promise<Map<string, { reps: number; weight: string; weightUnit: 'kg' | 'lb' }>> {
 		const rows = await db
 			.select({
@@ -288,6 +289,7 @@ export const workoutRepository = {
 				and(
 					eq(workouts.userId, userId),
 					ne(workouts.id, excludeWorkoutId),
+					lt(workouts.performedAt, before),
 					ne(exercises.category, 'cardio'),
 					eq(strengthSets.isWarmup, false)
 				)

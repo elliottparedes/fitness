@@ -135,8 +135,8 @@ export const workoutService = {
 		await workoutRepository.delete(workoutId, userId);
 	},
 
-	async getLastSetsByExercise(userId: string, excludeWorkoutId: string) {
-		return workoutRepository.getLastStrengthSetsByExercise(userId, excludeWorkoutId);
+	async getLastSetsByExercise(userId: string, excludeWorkoutId: string, before: Date) {
+		return workoutRepository.getLastStrengthSetsByExercise(userId, excludeWorkoutId, before);
 	},
 
 	async addEntryFromForm(

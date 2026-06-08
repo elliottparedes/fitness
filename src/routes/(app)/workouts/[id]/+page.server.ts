@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			detail.entries,
 			detail.workout.performedAt
 		),
-		workoutService.getLastSetsByExercise(session.user.id, params.id)
+		workoutService.getLastSetsByExercise(session.user.id, params.id, detail.workout.performedAt)
 	]);
 
 	return {
