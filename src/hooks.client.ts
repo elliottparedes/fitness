@@ -8,3 +8,20 @@ if (dev && 'serviceWorker' in navigator) {
 		}
 	});
 }
+
+/** Android edge-to-edge PWAs paint the gesture nav bar from the document background. */
+function syncSystemBarBackground() {
+	const background = getComputedStyle(document.documentElement)
+		.getPropertyValue('--app-background')
+		.trim();
+	if (!background) return;
+
+	document.documentElement.style.backgroundColor = background;
+	document.body.style.backgroundColor = background;
+}
+
+syncSystemBarBackground();
+
+for (const scheme of ['(prefers-color-scheme: dark)', '(prefers-color-scheme: light)'] as const) {
+	window.matchMedia(scheme).addEventListener('change', syncSystemBarBackground);
+}

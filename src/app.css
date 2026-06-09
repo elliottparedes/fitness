@@ -16,6 +16,8 @@
 html {
 	color-scheme: light dark;
 	overflow-x: hidden;
+	background-color: var(--app-background, #fff);
+	min-height: 100%;
 }
 
 body {
@@ -24,14 +26,32 @@ body {
 	background-color: var(--app-background, #fff);
 	color: var(--app-on-background, #1a1a1a);
 	overflow-x: hidden;
+	min-height: 100%;
+	min-height: 100dvh;
+}
+
+/* Paint behind Android gesture nav bar in edge-to-edge standalone PWAs */
+body::after {
+	content: '';
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: env(safe-area-inset-bottom, 0px);
+	background-color: var(--app-background, #fff);
+	pointer-events: none;
+	z-index: 0;
 }
 
 .app-shell {
-	min-height: 100vh;
+	min-height: 100%;
+	min-height: 100dvh;
 	display: flex;
 	flex-direction: column;
 	background-color: var(--app-background, #fff);
 	color: var(--app-on-background, #1a1a1a);
+	position: relative;
+	z-index: 1;
 }
 
 /* App chrome (native — no SMUI drawer/top bar ripple listeners) */
@@ -165,7 +185,8 @@ body {
 	gap: 0.25rem;
 }
 
-.app-nav__link {
+.app-nav__link,
+.app-nav__link:visited {
 	display: flex;
 	align-items: center;
 	gap: 0.75rem;
@@ -181,7 +202,8 @@ body {
 		color 0.15s ease;
 }
 
-.app-nav__link .material-icons {
+.app-nav__link .material-icons,
+.app-nav__link:visited .material-icons {
 	font-size: 1.35rem;
 	color: var(--app-muted);
 	flex-shrink: 0;
@@ -194,12 +216,14 @@ body {
 	outline-offset: 1px;
 }
 
-.app-nav__link--active {
+.app-nav__link--active,
+.app-nav__link--active:visited {
 	background: color-mix(in srgb, var(--app-accent, #0d9488) 16%, var(--app-surface));
 	color: var(--app-accent, #0d9488);
 }
 
-.app-nav__link--active .material-icons {
+.app-nav__link--active .material-icons,
+.app-nav__link--active:visited .material-icons {
 	color: var(--app-accent, #0d9488);
 }
 
