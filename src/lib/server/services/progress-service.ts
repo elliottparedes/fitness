@@ -195,23 +195,35 @@ function roundMetric(value: number): number {
 	return Math.round(value * 100) / 100;
 }
 
+async function buildProgressCards(
+	userId: string,
+	displayUnit: 'kg' | 'lb'
+): Promise<ExerciseProgressCard[]> {
+	const since = new Date();
+	since.setDate(since.getDate() - LOOKBACK_DAYS);
+
+	const [strengthRows, cardioRows] = await Promise.all([
+		workoutRepository.getStrengthSetsForProgress(userId, since),
+		workoutRepository.getCardioLogsForProgress(userId, since)
+	]);
+
+	return [...buildStrengthCards(strengthRows, displayUnit), ...buildCardioCards(cardioRows)]
+		.filter((card) => card.sessionCount >= 1)
+		.sort((a, b) => {
+			if (b.sessionCount !== a.sessionCount) return b.sessionCount - a.sessionCount;
+			return (b.lastValue ?? 0) - (a.lastValue ?? 0);
+		});
+}
+
 export const progressService = {
+	lookbackDays: LOOKBACK_DAYS,
+
 	async getDashboardCards(userId: string, displayUnit: 'kg' | 'lb'): Promise<ExerciseProgressCard[]> {
-		const since = new Date();
-		since.setDate(since.getDate() - LOOKBACK_DAYS);
-
-		const [strengthRows, cardioRows] = await Promise.all([
-			workoutRepository.getStrengthSetsForProgress(userId, since),
-			workoutRepository.getCardioLogsForProgress(userId, since)
-		]);
-
-		const cards = [...buildStrengthCards(strengthRows, displayUnit), ...buildCardioCards(cardioRows)]
-			.filter((card) => card.sessionCount >= 1)
-			.sort((a, b) => {
-				if (b.sessionCount !== a.sessionCount) return b.sessionCount - a.sessionCount;
-				return (b.lastValue ?? 0) - (a.lastValue ?? 0);
-			});
-
+		const cards = await buildProgressCards(userId, displayUnit);
 		return cards.slice(0, MAX_CARDS);
+	},
+
+	async getAllProgressCards(userId: string, displayUnit: 'kg' | 'lb'): Promise<ExerciseProgressCard[]> {
+		return buildProgressCards(userId, displayUnit);
 	}
 };

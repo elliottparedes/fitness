@@ -15,6 +15,13 @@
       "when": 1779836400000,
       "tag": "0001_workout_entry_unique_exercise",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1780974077662,
+      "tag": "0002_brief_molten_man",
+      "breakpoints": true
     }
   ]
 }

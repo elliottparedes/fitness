@@ -3,11 +3,12 @@ import { db } from '$lib/server/db';
 import {
 	cardioLogs,
 	exercises,
+	holdSets,
 	strengthSets,
 	workoutEntries,
 	workouts
 } from '$lib/server/db/schema';
-import type { CardioInput, StrengthSetInput } from '$lib/server/validation/form';
+import type { CardioInput, HoldSetInput, StrengthSetInput } from '$lib/server/validation/form';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from '$lib/domain/workout';
 import { weightToLbs } from '$lib/progress/metrics';
 
@@ -85,12 +86,17 @@ export const workoutRepository = {
 				? []
 				: await db.select().from(strengthSets).where(inArray(strengthSets.workoutEntryId, entryIds));
 
+		const holdSetRows =
+			entryIds.length === 0
+				? []
+				: await db.select().from(holdSets).where(inArray(holdSets.workoutEntryId, entryIds));
+
 		const cardio =
 			entryIds.length === 0
 				? []
 				: await db.select().from(cardioLogs).where(inArray(cardioLogs.workoutEntryId, entryIds));
 
-		return { entries, sets, cardio };
+		return { entries, sets, holdSets: holdSetRows, cardio };
 	},
 
 	async nextEntrySortOrder(workoutId: string): Promise<number> {
@@ -197,6 +203,121 @@ export const workoutRepository = {
 		}
 	},
 
+	async insertHoldSet(workoutEntryId: string, setNumber: number, input: HoldSetInput) {
+		await db.insert(holdSets).values({
+			workoutEntryId,
+			setNumber,
+			durationSeconds: input.durationSeconds,
+			reps: input.reps,
+			weight: input.weight,
+			weightUnit: input.weightUnit
+		});
+	},
+
+	async nextHoldSetNumber(workoutEntryId: string): Promise<number> {
+		const [row] = await db
+			.select({ value: max(holdSets.setNumber) })
+			.from(holdSets)
+			.where(eq(holdSets.workoutEntryId, workoutEntryId));
+		return (row?.value ?? 0) + 1;
+	},
+
+	async findHoldSetForUser(setId: string, userId: string) {
+		const [row] = await db
+			.select({ id: holdSets.id, workoutEntryId: holdSets.workoutEntryId })
+			.from(holdSets)
+			.innerJoin(workoutEntries, eq(holdSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.where(and(eq(holdSets.id, setId), eq(workouts.userId, userId)))
+			.limit(1);
+		return row ?? null;
+	},
+
+	async deleteHoldSet(setId: string) {
+		const [set] = await db
+			.select({ workoutEntryId: holdSets.workoutEntryId })
+			.from(holdSets)
+			.where(eq(holdSets.id, setId))
+			.limit(1);
+		if (!set) return;
+
+		await db.delete(holdSets).where(eq(holdSets.id, setId));
+
+		const remaining = await db
+			.select({ id: holdSets.id, setNumber: holdSets.setNumber })
+			.from(holdSets)
+			.where(eq(holdSets.workoutEntryId, set.workoutEntryId))
+			.orderBy(asc(holdSets.setNumber));
+
+		for (let i = 0; i < remaining.length; i++) {
+			const nextNumber = i + 1;
+			if (remaining[i].setNumber !== nextNumber) {
+				await db
+					.update(holdSets)
+					.set({ setNumber: nextNumber })
+					.where(eq(holdSets.id, remaining[i].id));
+			}
+		}
+	},
+
+	async getLastHoldSetsByExercise(
+		userId: string,
+		excludeWorkoutId: string,
+		before: Date
+	): Promise<Map<string, { durationSeconds: number; reps: number; weight: string | null; weightUnit: 'kg' | 'lb' | null }>> {
+		const rows = await db
+			.select({
+				exerciseId: exercises.id,
+				workoutId: workouts.id,
+				durationSeconds: holdSets.durationSeconds,
+				reps: holdSets.reps,
+				weight: holdSets.weight,
+				weightUnit: holdSets.weightUnit,
+				performedAt: workouts.performedAt
+			})
+			.from(holdSets)
+			.innerJoin(workoutEntries, eq(holdSets.workoutEntryId, workoutEntries.id))
+			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
+			.where(
+				and(
+					eq(workouts.userId, userId),
+					ne(workouts.id, excludeWorkoutId),
+					lt(workouts.performedAt, before),
+					eq(exercises.category, 'holds')
+				)
+			)
+			.orderBy(desc(workouts.performedAt));
+
+		const lastWorkoutByExercise = new Map<string, string>();
+		const setsFromLastWorkout = new Map<
+			string,
+			{ durationSeconds: number; reps: number; weight: string | null; weightUnit: 'kg' | 'lb' | null }[]
+		>();
+
+		for (const row of rows) {
+			if (!lastWorkoutByExercise.has(row.exerciseId)) {
+				lastWorkoutByExercise.set(row.exerciseId, row.workoutId);
+			}
+			if (lastWorkoutByExercise.get(row.exerciseId) !== row.workoutId) continue;
+			const list = setsFromLastWorkout.get(row.exerciseId) ?? [];
+			list.push({
+				durationSeconds: row.durationSeconds,
+				reps: row.reps,
+				weight: row.weight,
+				weightUnit: row.weightUnit as 'kg' | 'lb' | null
+			});
+			setsFromLastWorkout.set(row.exerciseId, list);
+		}
+
+		const map = new Map<string, { durationSeconds: number; reps: number; weight: string | null; weightUnit: 'kg' | 'lb' | null }>();
+		for (const [exerciseId, sets] of setsFromLastWorkout) {
+			const best = sets.reduce((b, s) => (s.durationSeconds > b.durationSeconds ? s : b));
+			map.set(exerciseId, best);
+		}
+		return map;
+	},
+
 	async getStrengthSetsForProgress(userId: string, since: Date) {
 		return db
 			.select({
@@ -215,11 +336,12 @@ export const workoutRepository = {
 			.innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
 			.innerJoin(exercises, eq(workoutEntries.exerciseId, exercises.id))
 			.where(
-				and(
-					eq(workouts.userId, userId),
-					gte(workouts.performedAt, since),
-					ne(exercises.category, 'cardio')
-				)
+			and(
+				eq(workouts.userId, userId),
+				gte(workouts.performedAt, since),
+				ne(exercises.category, 'cardio'),
+				ne(exercises.category, 'holds')
+			)
 			)
 			.orderBy(workouts.performedAt);
 	},
@@ -288,10 +410,11 @@ export const workoutRepository = {
 			.where(
 				and(
 					eq(workouts.userId, userId),
-					ne(workouts.id, excludeWorkoutId),
-					lt(workouts.performedAt, before),
-					ne(exercises.category, 'cardio'),
-					eq(strengthSets.isWarmup, false)
+				ne(workouts.id, excludeWorkoutId),
+				lt(workouts.performedAt, before),
+				ne(exercises.category, 'cardio'),
+				ne(exercises.category, 'holds'),
+				eq(strengthSets.isWarmup, false)
 				)
 			)
 			.orderBy(desc(workouts.performedAt));
@@ -351,9 +474,10 @@ export const workoutRepository = {
 					eq(workouts.userId, userId),
 					lt(workouts.performedAt, before),
 					ne(workouts.id, excludeWorkoutId),
-					eq(strengthSets.isWarmup, false),
-					ne(exercises.category, 'cardio')
-				)
+				eq(strengthSets.isWarmup, false),
+				ne(exercises.category, 'cardio'),
+				ne(exercises.category, 'holds')
+			)
 			)
 			.groupBy(exercises.id);
 

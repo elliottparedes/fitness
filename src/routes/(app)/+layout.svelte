@@ -13,6 +13,12 @@
 	const navItems = [
 		{ href: '/', label: 'Dashboard', icon: 'home', active: (p: string) => p === '/' },
 		{
+			href: '/charts',
+			label: 'Charts',
+			icon: 'show_chart',
+			active: (p: string) => p.startsWith('/charts')
+		},
+		{
 			href: '/workouts',
 			label: 'Workouts',
 			icon: 'fitness_center',

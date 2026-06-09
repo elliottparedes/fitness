@@ -5,11 +5,12 @@ import {
 	getWeekRange,
 	type WorkoutHighlightStat
 } from '$lib/workout-session-highlight';
-import { isStrengthCategory } from '$lib/domain/exercise';
+import { isHoldCategory, isStrengthCategory } from '$lib/domain/exercise';
 import { exerciseRepository } from '$lib/server/repositories/exercise-repository';
 import { workoutRepository } from '$lib/server/repositories/workout-repository';
 import {
 	parseCardioFromForm,
+	parseHoldSetFromForm,
 	parsePerformedAt,
 	parseStrengthSetFromForm,
 	formTrimmed
@@ -27,6 +28,7 @@ function isDuplicateWorkoutEntryError(error: unknown): boolean {
 function enrichEntries(
 	entries: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['entries'],
 	sets: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['sets'],
+	holdSetRows: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['holdSets'],
 	cardio: Awaited<ReturnType<typeof workoutRepository.getDetailRaw>>['cardio']
 ): WorkoutEntryView[] {
 	const setsByEntry = new Map<string, typeof sets>();
@@ -35,11 +37,24 @@ function enrichEntries(
 		list.push(set);
 		setsByEntry.set(set.workoutEntryId, list);
 	}
+	const holdSetsByEntry = new Map<string, typeof holdSetRows>();
+	for (const set of holdSetRows) {
+		const list = holdSetsByEntry.get(set.workoutEntryId) ?? [];
+		list.push(set);
+		holdSetsByEntry.set(set.workoutEntryId, list);
+	}
 	const cardioByEntry = new Map(cardio.map((c) => [c.workoutEntryId, c]));
 
 	return entries.map((entry) => ({
 		...entry,
 		sets: (setsByEntry.get(entry.id) ?? []).sort((a, b) => a.setNumber - b.setNumber),
+		holdSets: (holdSetsByEntry.get(entry.id) ?? [])
+			.sort((a, b) => a.setNumber - b.setNumber)
+			.map((s) => ({
+				...s,
+				weight: s.weight ?? null,
+				weightUnit: (s.weightUnit as 'kg' | 'lb' | null) ?? null
+			})),
 		cardio: cardioByEntry.get(entry.id) ?? null
 	}));
 }
@@ -52,10 +67,10 @@ export const workoutService = {
 		const workout = await workoutRepository.findForUser(workoutId, userId);
 		if (!workout) return null;
 
-		const { entries, sets, cardio } = await workoutRepository.getDetailRaw(workoutId);
+		const { entries, sets, holdSets, cardio } = await workoutRepository.getDetailRaw(workoutId);
 		return {
 			workout,
-			entries: enrichEntries(entries, sets, cardio)
+			entries: enrichEntries(entries, sets, holdSets, cardio)
 		};
 	},
 
@@ -139,6 +154,10 @@ export const workoutService = {
 		return workoutRepository.getLastStrengthSetsByExercise(userId, excludeWorkoutId, before);
 	},
 
+	async getLastHoldSetsByExercise(userId: string, excludeWorkoutId: string, before: Date) {
+		return workoutRepository.getLastHoldSetsByExercise(userId, excludeWorkoutId, before);
+	},
+
 	async addEntryFromForm(
 		workoutId: string,
 		userId: string,
@@ -179,6 +198,10 @@ export const workoutService = {
 			const cardio = parseCardioFromForm(formData);
 			if ('error' in cardio) return { ok: false, message: cardio.error };
 			await workoutRepository.insertCardioLog(entryId, cardio);
+		} else if (exercise.category === 'holds') {
+			const hold = parseHoldSetFromForm(formData);
+			if ('error' in hold) return { ok: false, message: hold.error };
+			await workoutRepository.insertHoldSet(entryId, 1, hold);
 		} else {
 			const set = parseStrengthSetFromForm(formData);
 			if ('error' in set) return { ok: false, message: set.error };
@@ -199,11 +222,18 @@ export const workoutService = {
 		const entryId = formTrimmed(formData, 'entryId');
 		if (!entryId) return { ok: false, message: 'Invalid set data.' };
 
-		const set = parseStrengthSetFromForm(formData);
-		if ('error' in set) return { ok: false, message: set.error };
-
-		const setNumber = await workoutRepository.nextSetNumber(entryId);
-		await workoutRepository.insertStrengthSet(entryId, setNumber, set);
+		const category = formTrimmed(formData, 'category');
+		if (category === 'holds') {
+			const hold = parseHoldSetFromForm(formData);
+			if ('error' in hold) return { ok: false, message: hold.error };
+			const setNumber = await workoutRepository.nextHoldSetNumber(entryId);
+			await workoutRepository.insertHoldSet(entryId, setNumber, hold);
+		} else {
+			const set = parseStrengthSetFromForm(formData);
+			if ('error' in set) return { ok: false, message: set.error };
+			const setNumber = await workoutRepository.nextSetNumber(entryId);
+			await workoutRepository.insertStrengthSet(entryId, setNumber, set);
+		}
 		return { ok: true, data: undefined };
 	},
 
@@ -247,10 +277,16 @@ export const workoutService = {
 		const setId = formTrimmed(formData, 'setId');
 		if (!setId) return { ok: false, message: 'Set not found.' };
 
-		const set = await workoutRepository.findStrengthSetForUser(setId, userId);
-		if (!set) return { ok: false, message: 'Set not found.' };
-
-		await workoutRepository.deleteStrengthSet(setId);
+		const category = formTrimmed(formData, 'category');
+		if (category === 'holds') {
+			const set = await workoutRepository.findHoldSetForUser(setId, userId);
+			if (!set) return { ok: false, message: 'Set not found.' };
+			await workoutRepository.deleteHoldSet(setId);
+		} else {
+			const set = await workoutRepository.findStrengthSetForUser(setId, userId);
+			if (!set) return { ok: false, message: 'Set not found.' };
+			await workoutRepository.deleteStrengthSet(setId);
+		}
 		return { ok: true, data: undefined };
 	}
 };
@@ -258,4 +294,8 @@ export const workoutService = {
 /** Type guard used when extending entry logging (e.g. new exercise categories). */
 export function requiresStrengthLog(category: string): boolean {
 	return isStrengthCategory(category as import('$lib/domain/exercise').ExerciseCategory);
+}
+
+export function requiresHoldLog(category: string): boolean {
+	return isHoldCategory(category as import('$lib/domain/exercise').ExerciseCategory);
 }

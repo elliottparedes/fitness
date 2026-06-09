@@ -14,14 +14,15 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	const exercises = await exerciseService.listForUser(session.user.id);
 	const preferredWeightUnit = await userService.getPreferredWeightUnit(session.user.id);
-	const [highlight, lastSetsByExercise] = await Promise.all([
+	const [highlight, lastSetsByExercise, lastHoldSetsByExercise] = await Promise.all([
 		workoutService.getSessionHighlight(
 			params.id,
 			session.user.id,
 			detail.entries,
 			detail.workout.performedAt
 		),
-		workoutService.getLastSetsByExercise(session.user.id, params.id, detail.workout.performedAt)
+		workoutService.getLastSetsByExercise(session.user.id, params.id, detail.workout.performedAt),
+		workoutService.getLastHoldSetsByExercise(session.user.id, params.id, detail.workout.performedAt)
 	]);
 
 	return {
@@ -30,7 +31,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		exercises,
 		preferredWeightUnit,
 		highlight,
-		lastSetsByExerciseId: Object.fromEntries(lastSetsByExercise)
+		lastSetsByExerciseId: Object.fromEntries(lastSetsByExercise),
+		lastHoldSetsByExerciseId: Object.fromEntries(lastHoldSetsByExercise)
 	};
 };
 

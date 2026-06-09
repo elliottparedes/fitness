@@ -10,6 +10,17 @@ export function workoutEntrySummary(entry: WorkoutEntryView): string {
 		return parts.join(' · ');
 	}
 
+	if (entry.category === 'holds') {
+		if (entry.holdSets.length === 0) return 'Tap to log sets';
+		const count = entry.holdSets.length;
+		const prefix = `${count} set${count === 1 ? '' : 's'} · `;
+		const preview = entry.holdSets
+			.slice(-3)
+			.map((s) => `${formatDuration(s.durationSeconds)}×${s.reps}`)
+			.join(', ');
+		return prefix + preview;
+	}
+
 	if (entry.sets.length === 0) return 'Tap to log sets';
 
 	const preview = entry.sets

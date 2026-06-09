@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { applyAction, enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import Textfield from '@smui/textfield';
 	import {
 		formatDistanceMiles,
@@ -12,12 +13,13 @@
 	import { CATEGORY_LABELS } from '$lib/domain/exercise';
 	import { convertWeightToUnit, weightToLbs } from '$lib/progress/metrics';
 	import { toastFromActionResult } from '$lib/ui/toast.svelte';
-	import type { LastRecordedSet, WorkoutEntryView } from '$lib/domain/workout';
+	import type { LastRecordedHoldSet, LastRecordedSet, WorkoutEntryView } from '$lib/domain/workout';
 
 	let {
 		entry,
 		preferredWeightUnit,
 		previousLastSet = null,
+		previousLastHoldSet = null,
 		unsaved = $bindable(false),
 		onclose,
 		onremoved
@@ -25,16 +27,21 @@
 		entry: WorkoutEntryView;
 		preferredWeightUnit: 'kg' | 'lb';
 		previousLastSet?: LastRecordedSet | null;
+		previousLastHoldSet?: LastRecordedHoldSet | null;
 		unsaved?: boolean;
 		onclose?: () => void;
 		onremoved?: () => void;
 	} = $props();
 
 	const lastSet = $derived(entry.sets.at(-1));
+	const lastHoldSet = $derived(entry.holdSets.at(-1));
 	let reps = $state('10');
 	let weight = $state('0');
+	let holdDuration = $state('30');
+	let holdWeight = $state('');
 	let isWarmup = $state(false);
 	let addingSet = $state(false);
+	let userEditedForm = $state(false);
 	let deletingSetId = $state('');
 	let durationMinutes = $state('');
 	let distanceMiles = $state('');
@@ -43,7 +50,9 @@
 	let addSetBaseline = $state({
 		reps: '10',
 		weight: '0',
-		isWarmup: false
+		isWarmup: false,
+		holdDuration: '30',
+		holdWeight: ''
 	});
 
 	const weightLabel = $derived(preferredWeightUnit === 'lb' ? 'Weight (lbs)' : 'Weight (kg)');
@@ -75,6 +84,19 @@
 		};
 	});
 
+	const bestSessionHoldSet = $derived.by(() => {
+		if (entry.holdSets.length === 0) return null;
+		return entry.holdSets.reduce((best, set) =>
+			set.durationSeconds > best.durationSeconds ? set : best
+		);
+	});
+
+	const lastHoldRecordedHint = $derived.by(() => {
+		const target = previousLastHoldSet ?? (bestSessionHoldSet ? { durationSeconds: bestSessionHoldSet.durationSeconds, reps: bestSessionHoldSet.reps, weight: bestSessionHoldSet.weight, weightUnit: bestSessionHoldSet.weightUnit } : null);
+		if (!target) return null;
+		return target;
+	});
+
 	const savedCardioDuration = $derived(
 		entry.cardio ? String(Math.round(entry.cardio.durationSeconds / 60)) : ''
 	);
@@ -88,9 +110,13 @@
 			? durationMinutes !== savedCardioDuration ||
 				distanceMiles !== savedCardioDistance ||
 				avgHeartRate !== savedCardioHeartRate
-			: reps !== addSetBaseline.reps ||
-				weight !== addSetBaseline.weight ||
-				isWarmup !== addSetBaseline.isWarmup
+			: entry.category === 'holds'
+				? holdDuration !== addSetBaseline.holdDuration ||
+					reps !== addSetBaseline.reps ||
+					holdWeight !== addSetBaseline.holdWeight
+				: reps !== addSetBaseline.reps ||
+					weight !== addSetBaseline.weight ||
+					isWarmup !== addSetBaseline.isWarmup
 	);
 
 	$effect(() => {
@@ -104,19 +130,53 @@
 			distanceMiles = savedCardioDistance;
 			avgHeartRate = savedCardioHeartRate;
 		}
-		if (lastSet) {
-			reps = `${lastSet.reps}`;
-			weight = convertWeightToUnit(lastSet.weight, lastSet.weightUnit, preferredWeightUnit);
-		} else {
-			reps = '10';
-			weight = '0';
+		// Only pre-fill inputs if the user hasn't started editing since the last submission.
+		if (!untrack(() => userEditedForm)) {
+			if (entry.category === 'holds') {
+				if (lastHoldSet) {
+					holdDuration = `${lastHoldSet.durationSeconds}`;
+					reps = `${lastHoldSet.reps}`;
+					holdWeight = lastHoldSet.weight
+						? convertWeightToUnit(lastHoldSet.weight, lastHoldSet.weightUnit ?? 'lb', preferredWeightUnit)
+						: '';
+				} else {
+					holdDuration = '30';
+					reps = '1';
+					holdWeight = '';
+				}
+			} else if (lastSet) {
+				reps = `${lastSet.reps}`;
+				weight = convertWeightToUnit(lastSet.weight, lastSet.weightUnit, preferredWeightUnit);
+			} else {
+				reps = '10';
+				weight = '0';
+			}
+			isWarmup = false;
 		}
-		isWarmup = false;
-		addSetBaseline = {
-			reps,
-			weight,
-			isWarmup: false
-		};
+		addSetBaseline =
+			entry.category === 'holds'
+				? {
+						reps: lastHoldSet ? `${lastHoldSet.reps}` : '1',
+						weight: '0',
+						isWarmup: false,
+						holdDuration: lastHoldSet ? `${lastHoldSet.durationSeconds}` : '30',
+						holdWeight: lastHoldSet?.weight
+							? convertWeightToUnit(
+									lastHoldSet.weight,
+									lastHoldSet.weightUnit ?? 'lb',
+									preferredWeightUnit
+								)
+							: ''
+					}
+				: {
+						reps: lastSet ? `${lastSet.reps}` : '10',
+						weight: lastSet
+							? convertWeightToUnit(lastSet.weight, lastSet.weightUnit, preferredWeightUnit)
+							: '0',
+						isWarmup: false,
+						holdDuration: '30',
+						holdWeight: ''
+					};
 	});
 
 	const afterSuccess = async () => {
@@ -173,6 +233,152 @@
 			<Textfield bind:value={avgHeartRate} label="Avg heart rate" type="number" style="width: 100%" />
 			<button type="submit" class="btn btn--primary btn--block">Save cardio</button>
 		</form>
+	{:else if entry.category === 'holds'}
+		<!-- Hold sets table -->
+		<div class="set-table set-table--holds" aria-label="Hold sets">
+			<div class="set-table__head">
+				<span>Set</span>
+				<span>Duration</span>
+				<span>Reps</span>
+				<span>Weight</span>
+				<span class="sr-only">Delete</span>
+			</div>
+			{#each entry.holdSets as set (set.id)}
+				<div class="set-table__row set-table__row--holds">
+					<span class="set-table__num">{set.setNumber}</span>
+					<span>{formatDuration(set.durationSeconds)}</span>
+					<span>{set.reps}</span>
+					<span>{set.weight ? formatWeight(set.weight, set.weightUnit ?? 'lb') : '—'}</span>
+					<form
+						method="POST"
+						action="?/deleteSet"
+						class="set-table__delete"
+						use:enhance={() => {
+							deletingSetId = set.id;
+							return async ({ result }) => {
+								deletingSetId = '';
+								await applyAction(result);
+								toastFromActionResult(result);
+								if (result.type === 'success') {
+									await afterSuccess();
+								}
+							};
+						}}
+					>
+						<input type="hidden" name="setId" value={set.id} />
+						<input type="hidden" name="category" value="holds" />
+						<button
+							type="submit"
+							class="icon-btn icon-btn--danger"
+							aria-label="Delete set {set.setNumber}"
+							disabled={deletingSetId === set.id}
+							title="Delete set"
+						>
+							<span class="material-icons" aria-hidden="true">delete_outline</span>
+						</button>
+					</form>
+				</div>
+			{:else}
+				<p class="muted exercise-panel__empty">No sets logged yet.</p>
+			{/each}
+		</div>
+
+		<!-- Add hold set form -->
+		<form
+			method="POST"
+			action="?/addSet"
+			class="add-set-form"
+			use:enhance={() => {
+				addingSet = true;
+				return async ({ result }) => {
+					addingSet = false;
+					await applyAction(result);
+					if (result.type === 'success') {
+						userEditedForm = false;
+						await afterSuccess();
+					}
+				};
+			}}
+		>
+			<input type="hidden" name="entryId" value={entry.id} />
+			<input type="hidden" name="category" value="holds" />
+			<input type="hidden" name="weightUnit" value={preferredWeightUnit} />
+			{#if lastHoldRecordedHint}
+				<p class="best-last-workout-hint">
+					<span class="best-last-workout-hint__label">Best last workout</span>
+					<span class="best-last-workout-hint__value">
+						{formatDuration(lastHoldRecordedHint.durationSeconds)} × {lastHoldRecordedHint.reps}
+						{#if lastHoldRecordedHint.weight}
+							· {formatWeight(lastHoldRecordedHint.weight, lastHoldRecordedHint.weightUnit ?? 'lb')}
+						{/if}
+					</span>
+				</p>
+			{/if}
+			<p class="add-set-form__label">Add set</p>
+			<div class="add-set-form__fields add-set-form__fields--holds">
+				<label class="field">
+					<span class="field__label">Duration (sec or mm:ss)</span>
+					<input
+						class="native-input"
+						name="holdDuration"
+						type="text"
+						inputmode="numeric"
+						bind:value={holdDuration}
+						oninput={() => (userEditedForm = true)}
+						required
+					/>
+				</label>
+				<label class="field">
+					<span class="field__label">Reps</span>
+					<input class="native-input" name="reps" type="number" min="1" bind:value={reps} oninput={() => (userEditedForm = true)} required />
+				</label>
+				<label class="field">
+					<span class="field__label">{weightLabel} (opt.)</span>
+					<input
+						class="native-input"
+						name="weight"
+						type="number"
+						min="0"
+						step="0.5"
+						bind:value={holdWeight}
+						oninput={() => (userEditedForm = true)}
+					/>
+				</label>
+			</div>
+			<div class="add-set-form__actions">
+				<button type="submit" class="btn btn--primary" disabled={addingSet}>
+					{addingSet ? 'Adding…' : 'Add set'}
+				</button>
+			</div>
+		</form>
+
+		{#if lastHoldSet}
+			<form
+				method="POST"
+				action="?/addSet"
+				class="repeat-last"
+				use:enhance={() => {
+					addingSet = true;
+					return async ({ result }) => {
+						addingSet = false;
+						await applyAction(result);
+						if (result.type === 'success') {
+							await afterSuccess();
+						}
+					};
+				}}
+			>
+				<input type="hidden" name="entryId" value={entry.id} />
+				<input type="hidden" name="category" value="holds" />
+				<input type="hidden" name="holdDuration" value={lastHoldSet.durationSeconds} />
+				<input type="hidden" name="reps" value={lastHoldSet.reps} />
+				<input type="hidden" name="weight" value={lastHoldSet.weight ?? ''} />
+				<input type="hidden" name="weightUnit" value={preferredWeightUnit} />
+				<button type="submit" class="btn btn--secondary btn--block" disabled={addingSet}>
+					Repeat last set ({formatDuration(lastHoldSet.durationSeconds)} × {lastHoldSet.reps}{lastHoldSet.weight ? ` · ${formatWeight(lastHoldSet.weight, lastHoldSet.weightUnit ?? 'lb')}` : ''})
+				</button>
+			</form>
+		{/if}
 	{:else}
 		<div class="set-table" aria-label="Sets">
 			<div class="set-table__head">
@@ -234,6 +440,7 @@
 					addingSet = false;
 					await applyAction(result);
 					if (result.type === 'success') {
+						userEditedForm = false;
 						await afterSuccess();
 					}
 				};
@@ -253,7 +460,7 @@
 			<div class="add-set-form__fields">
 				<label class="field">
 					<span class="field__label">Reps</span>
-					<input class="native-input" name="reps" type="number" min="0" bind:value={reps} required />
+					<input class="native-input" name="reps" type="number" min="0" bind:value={reps} oninput={() => (userEditedForm = true)} required />
 				</label>
 				<label class="field">
 					<span class="field__label">{weightLabel}</span>
@@ -264,14 +471,15 @@
 						min="0"
 						step="0.5"
 						bind:value={weight}
+						oninput={() => (userEditedForm = true)}
 						required
 					/>
 				</label>
 			</div>
-			<label class="warmup-check">
-				<input type="checkbox" name="isWarmup" bind:checked={isWarmup} />
-				Warmup set
-			</label>
+		<label class="warmup-check">
+			<input type="checkbox" name="isWarmup" bind:checked={isWarmup} onchange={() => (userEditedForm = true)} />
+			Warmup set
+		</label>
 			<div class="add-set-form__actions">
 				<button type="submit" class="btn btn--primary" disabled={addingSet}>
 					{addingSet ? 'Adding…' : 'Add set'}
@@ -396,6 +604,11 @@
 		align-items: center;
 	}
 
+	.set-table--holds .set-table__head,
+	.set-table--holds .set-table__row--holds {
+		grid-template-columns: 2.5rem 1fr 1fr 1fr 2.75rem;
+	}
+
 	.set-table__head {
 		font-size: 0.75rem;
 		font-weight: 500;
@@ -453,6 +666,10 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 0.5rem;
+	}
+
+	.add-set-form__fields--holds {
+		grid-template-columns: 1.4fr 1fr 1fr;
 	}
 
 	.field {

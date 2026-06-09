@@ -10,6 +10,7 @@ export type WorkoutEntryView = {
 	exerciseName: string;
 	category: ExerciseCategory;
 	sets: StrengthSetView[];
+	holdSets: HoldSetView[];
 	cardio: CardioLogView | null;
 };
 
@@ -23,11 +24,28 @@ export type StrengthSetView = {
 	isWarmup: boolean;
 };
 
+export type HoldSetView = {
+	id: string;
+	workoutEntryId: string;
+	setNumber: number;
+	durationSeconds: number;
+	reps: number;
+	weight: string | null;
+	weightUnit: 'kg' | 'lb' | null;
+};
+
 /** Last logged working set for an exercise from a prior workout. */
 export type LastRecordedSet = {
 	reps: number;
 	weight: string;
 	weightUnit: 'kg' | 'lb';
+};
+
+export type LastRecordedHoldSet = {
+	durationSeconds: number;
+	reps: number;
+	weight: string | null;
+	weightUnit: 'kg' | 'lb' | null;
 };
 
 export type CardioLogView = {

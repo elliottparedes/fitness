@@ -1,13 +1,14 @@
 /** Domain constants and types — no framework or DB imports. */
 
-export const EXERCISE_CATEGORIES = ['machine', 'cardio', 'free_weight'] as const;
+export const EXERCISE_CATEGORIES = ['machine', 'cardio', 'free_weight', 'holds'] as const;
 
 export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
 	machine: 'Machines',
 	cardio: 'Cardio',
-	free_weight: 'Free weights'
+	free_weight: 'Free weights',
+	holds: 'Holds'
 };
 
 export function isExerciseCategory(value: string | null | undefined): value is ExerciseCategory {
@@ -16,4 +17,8 @@ export function isExerciseCategory(value: string | null | undefined): value is E
 
 export function isStrengthCategory(category: ExerciseCategory): boolean {
 	return category === 'machine' || category === 'free_weight';
+}
+
+export function isHoldCategory(category: ExerciseCategory): boolean {
+	return category === 'holds';
 }

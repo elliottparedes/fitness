@@ -75,7 +75,8 @@ export const verificationTokens = mysqlTable(
 export const exerciseCategoryEnum = mysqlEnum('exercise_category', [
 	'machine',
 	'cardio',
-	'free_weight'
+	'free_weight',
+	'holds'
 ]);
 
 export const exercises = mysqlTable(
@@ -151,6 +152,20 @@ export const strengthSets = mysqlTable('strength_sets', {
 	isWarmup: boolean('is_warmup').notNull().default(false)
 });
 
+export const holdSets = mysqlTable('hold_sets', {
+	id: varchar('id', { length: 36 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	workoutEntryId: varchar('workout_entry_id', { length: 36 })
+		.notNull()
+		.references(() => workoutEntries.id, { onDelete: 'cascade' }),
+	setNumber: int('set_number').notNull(),
+	durationSeconds: int('duration_seconds').notNull(),
+	reps: int('reps').notNull(),
+	weight: decimal('weight', { precision: 8, scale: 2 }),
+	weightUnit: mysqlEnum('weight_unit', ['kg', 'lb'])
+});
+
 export const cardioLogs = mysqlTable('cardio_logs', {
 	workoutEntryId: varchar('workout_entry_id', { length: 36 })
 		.primaryKey()
@@ -195,6 +210,7 @@ export const workoutEntriesRelations = relations(workoutEntries, ({ one, many })
 		references: [exercises.id]
 	}),
 	strengthSets: many(strengthSets),
+	holdSets: many(holdSets),
 	cardioLog: one(cardioLogs, {
 		fields: [workoutEntries.id],
 		references: [cardioLogs.workoutEntryId]
@@ -204,6 +220,13 @@ export const workoutEntriesRelations = relations(workoutEntries, ({ one, many })
 export const strengthSetsRelations = relations(strengthSets, ({ one }) => ({
 	workoutEntry: one(workoutEntries, {
 		fields: [strengthSets.workoutEntryId],
+		references: [workoutEntries.id]
+	})
+}));
+
+export const holdSetsRelations = relations(holdSets, ({ one }) => ({
+	workoutEntry: one(workoutEntries, {
+		fields: [holdSets.workoutEntryId],
 		references: [workoutEntries.id]
 	})
 }));

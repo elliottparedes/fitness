@@ -48,9 +48,14 @@
 </div>
 
 <section class="progress-section">
-	<div class="section-header">
-		<h2 class="section-title">Exercise progress</h2>
-		<p class="muted section-subtitle">Top weight or duration over your last sessions</p>
+	<div class="section-header section-header--stacked">
+		<div>
+			<h2 class="section-title">Exercise progress</h2>
+			<p class="muted section-subtitle">Top weight or duration over your last sessions</p>
+		</div>
+		{#if data.exerciseProgress.length > 0}
+			<a href="/charts" class="btn btn--secondary section-header__action">View all charts</a>
+		{/if}
 	</div>
 
 	{#if data.exerciseProgress.length > 0}
@@ -109,6 +114,17 @@
 	}
 	.section-header {
 		margin-bottom: 1rem;
+	}
+	.section-header--stacked {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+	.section-header__action {
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 	.section-header .section-title {
 		margin: 0;

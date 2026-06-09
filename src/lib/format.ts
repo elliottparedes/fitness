@@ -54,14 +54,17 @@ export function formatWeight(value: string | number, unit: 'kg' | 'lb'): string 
 	return `${display} ${unit === 'lb' ? 'lbs' : 'kg'}`;
 }
 
-export function parseDurationInput(value: string): number | null {
+export function parseDurationInput(
+	value: string,
+	plainNumberUnit: 'minutes' | 'seconds' = 'minutes'
+): number | null {
 	const trimmed = value.trim();
 	if (!trimmed) return null;
 	const match = trimmed.match(/^(\d+):(\d{2})$/);
 	if (match) {
 		return Number(match[1]) * 60 + Number(match[2]);
 	}
-	const minutes = Number(trimmed);
-	if (Number.isFinite(minutes) && minutes >= 0) return Math.round(minutes * 60);
-	return null;
+	const amount = Number(trimmed);
+	if (!Number.isFinite(amount) || amount < 0) return null;
+	return plainNumberUnit === 'seconds' ? Math.round(amount) : Math.round(amount * 60);
 }

@@ -36,6 +36,8 @@
 	let reps = $state('10');
 	let weight = $state('0');
 	let duration = $state('30');
+	let holdDuration = $state('30');
+	let holdWeight = $state('');
 	let distanceMiles = $state('');
 	let calories = $state('');
 	let avgHeartRate = $state('');
@@ -74,12 +76,10 @@
 			return true;
 		}
 		if (category === 'cardio') {
-			return (
-				duration !== '30' ||
-				distanceMiles !== '' ||
-				calories !== '' ||
-				avgHeartRate !== ''
-			);
+			return duration !== '30' || distanceMiles !== '' || calories !== '' || avgHeartRate !== '';
+		}
+		if (category === 'holds') {
+			return holdDuration !== '30' || reps !== '10' || holdWeight !== '';
 		}
 		return reps !== '10' || weight !== '0';
 	});
@@ -102,6 +102,19 @@
 
 	$effect(() => {
 		if (!selectedExerciseId || tab === 'cardio') return;
+		if (tab === 'holds') {
+			const matchingEntries = data.entries.filter((entry) => entry.exerciseId === selectedExerciseId);
+			const lastEntry = matchingEntries.at(-1);
+			const lastHoldSet = lastEntry?.holdSets.at(-1);
+			if (lastHoldSet) {
+				holdDuration = `${lastHoldSet.durationSeconds}`;
+				reps = `${lastHoldSet.reps}`;
+				holdWeight = lastHoldSet.weight
+					? convertWeightToUnit(lastHoldSet.weight, lastHoldSet.weightUnit ?? 'lb', data.preferredWeightUnit)
+					: '';
+			}
+			return;
+		}
 		const matchingEntries = data.entries.filter((entry) => entry.exerciseId === selectedExerciseId);
 		const lastEntry = matchingEntries.at(-1);
 		const lastSet = lastEntry?.sets.at(-1);
@@ -125,7 +138,12 @@
 		formData.set('calories', calories);
 		formData.set('avgHeartRate', avgHeartRate);
 		formData.set('reps', reps);
-		formData.set('weight', weight);
+		if (tab === 'holds') {
+			formData.set('holdDuration', holdDuration);
+			formData.set('weight', holdWeight);
+		} else {
+			formData.set('weight', weight);
+		}
 		if (tab === 'cardio') {
 			const meters = milesInputToMeters(distanceMiles);
 			formData.set('distanceMeters', meters == null ? '' : String(meters));
@@ -154,7 +172,7 @@
 
 <div class="add-exercise-panel">
 	<div class="category-tabs" role="tablist" aria-label="Exercise category">
-		{#each ['free_weight', 'machine', 'cardio'] as cat}
+		{#each ['free_weight', 'machine', 'holds', 'cardio'] as cat}
 			<button
 				type="button"
 				class="category-tab"
@@ -201,6 +219,12 @@
 			/>
 			<Textfield bind:value={calories} label="Calories" type="number" style="width: 100%" />
 			<Textfield bind:value={avgHeartRate} label="Avg heart rate" type="number" style="width: 100%" />
+		{:else if tab === 'holds'}
+			<div class="first-set-fields first-set-fields--3">
+				<Textfield bind:value={holdDuration} label="Duration (sec or mm:ss)" required style="width: 100%" />
+				<Textfield bind:value={reps} label="Reps" type="number" style="width: 100%" />
+				<Textfield bind:value={holdWeight} label="{weightLabel} (optional)" type="number" style="width: 100%" />
+			</div>
 		{:else}
 			{#if previousLastSet}
 				<p class="best-last-workout-hint">
@@ -240,7 +264,7 @@
 
 	.category-tabs {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(4, 1fr);
 		gap: 0.35rem;
 		padding: 0.25rem;
 		border-radius: 0.75rem;
@@ -273,6 +297,10 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 0.75rem;
+	}
+
+	.first-set-fields--3 {
+		grid-template-columns: 1fr 1fr 1fr;
 	}
 
 	.warmup-check {

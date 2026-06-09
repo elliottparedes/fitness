@@ -71,6 +71,33 @@ export function parseStrengthSetFromForm(data: FormData): StrengthSetInput | { e
 	};
 }
 
+export type HoldSetInput = {
+	durationSeconds: number;
+	reps: number;
+	weight: string | null;
+	weightUnit: 'kg' | 'lb' | null;
+};
+
+export function parseHoldSetFromForm(data: FormData): HoldSetInput | { error: string } {
+	const durationSeconds = parseDurationInput(formString(data, 'holdDuration') ?? '', 'seconds');
+	if (!durationSeconds || durationSeconds <= 0) {
+		return { error: 'Duration is required for holds (seconds or mm:ss).' };
+	}
+	const reps = Number(formString(data, 'reps'));
+	if (!Number.isFinite(reps) || reps <= 0) {
+		return { error: 'Reps must be at least 1.' };
+	}
+	const rawWeight = formString(data, 'weight');
+	const rawWeightUnit = formString(data, 'weightUnit');
+	const hasWeight = rawWeight != null && rawWeight !== '' && Number(rawWeight) > 0;
+	return {
+		durationSeconds,
+		reps: Math.round(reps),
+		weight: hasWeight ? Number(rawWeight).toFixed(2) : null,
+		weightUnit: hasWeight ? (rawWeightUnit === 'kg' ? 'kg' : 'lb') : null
+	};
+}
+
 export function parsePerformedAt(raw: string | undefined): Date | { error: string } {
 	if (!raw) return { error: 'Date and time are required.' };
 	const date = new Date(raw);

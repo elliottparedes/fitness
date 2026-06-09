@@ -42,6 +42,7 @@
 		{ value: null, label: 'All', shortLabel: 'All' },
 		{ value: 'free_weight', label: CATEGORY_LABELS.free_weight, shortLabel: 'Weights' },
 		{ value: 'machine', label: CATEGORY_LABELS.machine, shortLabel: 'Machine' },
+		{ value: 'holds', label: CATEGORY_LABELS.holds, shortLabel: 'Holds' },
 		{ value: 'cardio', label: CATEGORY_LABELS.cardio, shortLabel: 'Cardio' }
 	];
 
@@ -175,6 +176,7 @@
 			<select class="native-input" name="category" bind:value={category}>
 				<option value="free_weight">{CATEGORY_LABELS.free_weight}</option>
 				<option value="machine">{CATEGORY_LABELS.machine}</option>
+				<option value="holds">{CATEGORY_LABELS.holds}</option>
 				<option value="cardio">{CATEGORY_LABELS.cardio}</option>
 			</select>
 		</label>

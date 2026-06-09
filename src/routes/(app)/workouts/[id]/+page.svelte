@@ -263,6 +263,7 @@
 			entry={activeEntry}
 			preferredWeightUnit={data.preferredWeightUnit}
 			previousLastSet={data.lastSetsByExerciseId[activeEntry.exerciseId] ?? null}
+			previousLastHoldSet={data.lastHoldSetsByExerciseId[activeEntry.exerciseId] ?? null}
 			bind:unsaved={exerciseUnsaved}
 			onclose={tryCloseSheet}
 			onremoved={closeSheet}

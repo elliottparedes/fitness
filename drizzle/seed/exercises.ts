@@ -5,7 +5,7 @@ import { exercises } from '../../src/lib/server/db/schema.js';
 
 type SeedExercise = {
 	name: string;
-	category: 'machine' | 'cardio' | 'free_weight';
+	category: 'machine' | 'cardio' | 'free_weight' | 'holds';
 	muscleGroup?: string;
 	description?: string;
 };
@@ -38,6 +38,13 @@ const catalog: SeedExercise[] = [
 	{ name: 'Cable Bicep Curl', category: 'machine', muscleGroup: 'arms' },
 	{ name: 'Hip Abductor', category: 'machine', muscleGroup: 'legs' },
 	{ name: 'Hip Adductor', category: 'machine', muscleGroup: 'legs' },
+	{ name: 'Plank', category: 'holds', muscleGroup: 'core' },
+	{ name: 'Side Plank', category: 'holds', muscleGroup: 'core' },
+	{ name: 'Hollow Hold', category: 'holds', muscleGroup: 'core' },
+	{ name: 'Dead Hang', category: 'holds', muscleGroup: 'back', description: 'Hanging from a bar with arms extended' },
+	{ name: 'Wall Sit', category: 'holds', muscleGroup: 'legs' },
+	{ name: 'L-Sit', category: 'holds', muscleGroup: 'core' },
+	{ name: 'Bottom Squat Hold', category: 'holds', muscleGroup: 'legs' },
 	{ name: 'Treadmill Run', category: 'cardio', description: 'Running on treadmill' },
 	{ name: 'Treadmill Walk', category: 'cardio', description: 'Walking on treadmill' },
 	{ name: 'Stationary Bike', category: 'cardio', description: 'Upright or recumbent bike' },
